@@ -1,0 +1,2 @@
+class HabitLog:
+    pass

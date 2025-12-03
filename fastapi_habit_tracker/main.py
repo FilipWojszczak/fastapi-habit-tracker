@@ -1,8 +1,8 @@
 from fastapi import FastAPI
+from .routers import auth, habits, habit_logs
 
-app = FastAPI(title="Habit & Workout Tracker API")
+app = FastAPI()
 
-
-@app.get("/health")
-def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+app.include_router(auth.router)
+app.include_router(habits.router)
+app.include_router(habit_logs.router)
