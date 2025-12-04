@@ -1,5 +1,5 @@
 from sqlmodel import SQLModel, Field, Relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List
 
 from .user import User
@@ -13,8 +13,8 @@ class Habit(SQLModel, table=True):
     description: Optional[str] = None
     period: str  # "daily" | "weekly"
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc))
 
     user: User = Relationship(back_populates="habits")
     logs: List["HabitLog"] = Relationship(back_populates="habit")
