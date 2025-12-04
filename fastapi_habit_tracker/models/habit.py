@@ -1,2 +1,20 @@
-class Habit:
-    pass
+from sqlmodel import SQLModel, Field, Relationship
+from datetime import datetime
+from typing import Optional, List
+
+from .user import User
+from .habit_log import HabitLog
+
+class Habit(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+
+    name: str
+    description: Optional[str] = None
+    period: str  # "daily" | "weekly"
+
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    user: User = Relationship(back_populates="habits")
+    logs: List["HabitLog"] = Relationship(back_populates="habit")
