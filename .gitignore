@@ -10,3 +10,7 @@ __pycache__/
 
 # VS Code
 .vscode/
+
+# Database files
+habit_tracker.db
+*.dbj

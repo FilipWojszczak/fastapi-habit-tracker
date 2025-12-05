@@ -1,8 +1,9 @@
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, timezone
-from typing import List
+from typing import TYPE_CHECKING, List
 
-from .habit import Habit
+if TYPE_CHECKING:
+    from .habit import Habit
 
 
 class User(SQLModel, table=True):
@@ -10,7 +11,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     hashed_password: str
 
-    habits: List[Habit] = Relationship(back_populates="user")
+    habits: List["Habit"] = Relationship(back_populates="user")
 
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
