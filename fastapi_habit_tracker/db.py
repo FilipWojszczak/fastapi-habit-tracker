@@ -1,5 +1,6 @@
 from sqlmodel import SQLModel, create_engine, Session
 
+from . import models
 
 DATABASE_URL = "sqlite:///./habit_tracker.db"
 

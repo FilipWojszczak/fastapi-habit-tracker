@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, List
@@ -13,7 +11,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     hashed_password: str
 
-    habits: List[Habit] = Relationship(back_populates="user")
+    habits: List["Habit"] = Relationship(back_populates="user")
 
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

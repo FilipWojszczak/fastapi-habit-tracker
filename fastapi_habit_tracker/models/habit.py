@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Optional, List
+from typing import TYPE_CHECKING, List
 
 from .user import User
 
@@ -15,11 +13,11 @@ class Habit(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     period: str  # "daily" | "weekly"
 
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     user: User = Relationship(back_populates="habits")
-    logs: List[HabitLog] = Relationship(back_populates="habit")
+    logs: List["HabitLog"] = Relationship(back_populates="habit")

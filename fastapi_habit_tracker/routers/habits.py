@@ -24,7 +24,7 @@ async def create_habit(
 
 @router.get("/", response_model=list[HabitRead])
 async def list_habits(session: Session = Depends(get_session)):
-    habits = session.exec(select(Habit).all())
+    habits = session.exec(select(Habit)).all()
     return habits
 
 
