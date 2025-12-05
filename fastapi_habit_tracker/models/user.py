@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, timezone
-from typing import List
+from typing import TYPE_CHECKING, List
 
-from .habit import Habit
+if TYPE_CHECKING:
+    from .habit import Habit
 
 
 class User(SQLModel, table=True):

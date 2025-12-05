@@ -1,7 +1,11 @@
+from __future__ import annotations
+
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
-from .habit import Habit
+if TYPE_CHECKING:
+    from .habit import Habit
 
 
 class HabitLog(SQLModel, table=True):
@@ -10,4 +14,4 @@ class HabitLog(SQLModel, table=True):
 
     timestamp: datetime = Field(default_factory=datetime.now(timezone.utc))
 
-    habit: "Habit" = Relationship(back_populates="logs")
+    habit: Habit = Relationship(back_populates="logs")
