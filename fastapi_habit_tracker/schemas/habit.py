@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 class HabitBase(BaseModel):
     name: str = Field(min_length=1)
-    descrtiption: str | None = None
+    description: str | None = None
     period: str
 
 
