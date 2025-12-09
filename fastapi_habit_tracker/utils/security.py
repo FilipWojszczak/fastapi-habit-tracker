@@ -1,4 +1,12 @@
+from datetime import datetime, timedelta, timezone
+
 from pwdlib import PasswordHash
+import jwt
+
+
+SECRET_KEY = "e4642ddb62a95a34904bc6439bb72c615cc6ba6703499d42903f428fe9f597ae"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
 password_hash = PasswordHash.recommended()
@@ -10,3 +18,38 @@ def hash_password(password: str) -> str:
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
+
+
+def create_access_token(
+    user_id: int, expires_delta: timedelta | int = ACCESS_TOKEN_EXPIRE_MINUTES
+) -> str:
+    to_encode = {"sub": str(user_id), "iat": datetime.now(timezone.utc)}
+    if isinstance(expires_delta, timedelta):
+        expire = to_encode["iat"] + expires_delta
+    else:
+        expire = to_encode["iat"] + timedelta(minutes=expires_delta)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+class InvalidTokenException(Exception):
+    """Raised when JWT is invalid or cannot be used"""
+
+    pass
+
+
+def verify_access_token(token: str) -> int:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.ExpiredSignatureError as exc:
+        # Token valid, but expired
+        raise InvalidTokenException("Token has expired") from exc
+    except jwt.InvalidTokenError as exc:
+        # Token broken or otherwise invalid
+        raise InvalidTokenException("Invalid token") from exc
+    user_id = payload.get("sub")
+    if user_id is None:
+        # Token does not contain user identification
+        raise InvalidTokenException("Token missing subject (sub)")
+    return int(user_id)
