@@ -11,6 +11,12 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 password_hash = PasswordHash.recommended()
 
 
+class InvalidTokenError(Exception):
+    """Raised when JWT is invalid or cannot be used"""
+
+    pass
+
+
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
 
@@ -30,12 +36,6 @@ def create_access_token(
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
-
-class InvalidTokenError(Exception):
-    """Raised when JWT is invalid or cannot be used"""
-
-    pass
 
 
 def verify_access_token(token: str) -> int:
