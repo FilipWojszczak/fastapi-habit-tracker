@@ -1,12 +1,21 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..db import get_session
 from ..models.user import User
 from ..schemas.user import UserCreate, UserRead
-from ..utils.security import hash_password
+from ..utils.security import hash_password, verify_password, create_access_token
 
 router = APIRouter(prefix="/auth")
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
 
 @router.post("/register", response_model=UserRead)
@@ -29,6 +38,20 @@ async def register_user(user_data: UserCreate, session: Session = Depends(get_se
     return new_user
 
 
-@router.post("/login")
-async def login_user():
-    pass
+def authenticate_user(email: str, password: str, session: Session) -> User | None:
+    user = session.exec(select(User).where(User.email == email)).one_or_none()
+    if not user or not verify_password(password, user.hashed_password):
+        return None
+    return user
+
+
+@router.post("/token")
+async def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    session: Annotated[Session, Depends(get_session)],
+):
+    user = authenticate_user(form_data.username, form_data.password, session)
+    if not user:
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    access_token = create_access_token(user.id)
+    return Token(access_token=access_token)
