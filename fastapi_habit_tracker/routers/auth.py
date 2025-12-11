@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from ..db import get_session
 from ..models.user import User
 from ..schemas.user import UserCreate, UserRead
-from ..utils.security import hash_password, verify_password, create_access_token
+from ..utils.security import create_access_token, hash_password, verify_password
 
 router = APIRouter(prefix="/auth")
 
@@ -19,7 +19,9 @@ class Token(BaseModel):
 
 
 @router.post("/register", response_model=UserRead)
-async def register_user(user_data: UserCreate, session: Session = Depends(get_session)):
+async def register_user(
+    user_data: UserCreate, session: Annotated[Session, Depends(get_session)]
+):
     existing_user = session.exec(
         select(User).where(User.email == user_data.email)
     ).one_or_none()

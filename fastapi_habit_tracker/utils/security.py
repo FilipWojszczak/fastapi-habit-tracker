@@ -1,8 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
-from pwdlib import PasswordHash
 import jwt
-
+from pwdlib import PasswordHash
 
 SECRET_KEY = "e4642ddb62a95a34904bc6439bb72c615cc6ba6703499d42903f428fe9f597ae"
 ALGORITHM = "HS256"
@@ -23,7 +22,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(
     user_id: int, expires_delta: timedelta | int = ACCESS_TOKEN_EXPIRE_MINUTES
 ) -> str:
-    to_encode = {"sub": str(user_id), "iat": datetime.now(timezone.utc)}
+    to_encode = {"sub": str(user_id), "iat": datetime.now(UTC)}
     if isinstance(expires_delta, timedelta):
         expire = to_encode["iat"] + expires_delta
     else:
@@ -33,7 +32,7 @@ def create_access_token(
     return encoded_jwt
 
 
-class InvalidTokenException(Exception):
+class InvalidTokenError(Exception):
     """Raised when JWT is invalid or cannot be used"""
 
     pass
@@ -44,12 +43,12 @@ def verify_access_token(token: str) -> int:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.ExpiredSignatureError as exc:
         # Token valid, but expired
-        raise InvalidTokenException("Token has expired") from exc
+        raise InvalidTokenError("Token has expired") from exc
     except jwt.InvalidTokenError as exc:
         # Token broken or otherwise invalid
-        raise InvalidTokenException("Invalid token") from exc
+        raise InvalidTokenError("Invalid token") from exc
     user_id = payload.get("sub")
     if user_id is None:
         # Token does not contain user identification
-        raise InvalidTokenException("Token missing subject (sub)")
+        raise InvalidTokenError("Token missing subject (sub)")
     return int(user_id)
