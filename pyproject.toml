@@ -7,10 +7,53 @@ requires-python = ">=3.14"
 dependencies = [
     "aiosqlite>=0.21.0",
     "fastapi[standard]>=0.123.4",
+    "pwdlib[argon2]>=0.3.0",
+    "pyjwt>=2.10.1",
     "ruff>=0.14.7",
     "sqlalchemy>=2.0",
     "sqlmodel>=0.0.27",
-    "uvicorn[standard]>=0.38.0",
+    "uvicorn[standard]>=0.38.0"
 ]
+
 [tool.ruff]
 line-length = 88
+target-version = "py314"
+src = ["fastapi_habit_tracker"]
+extend-exclude = [
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "migrations"
+]
+fix =true
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E", "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "SIM",
+    "ASYNC",
+    "RUF"
+]
+ignore = []
+
+
+[tool.ruff.lint.isort]
+known-first-party = ["fastapi_habit_tracker"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.0",
+]

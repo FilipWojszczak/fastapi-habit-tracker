@@ -1,6 +1,7 @@
-from sqlmodel import SQLModel, Field, Relationship
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING, List
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
+
+from sqlmodel import Field, Relationship, SQLModel
 
 from .user import User
 
@@ -16,8 +17,8 @@ class Habit(SQLModel, table=True):
     description: str | None = None
     period: str  # "daily" | "weekly"
 
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     user: User = Relationship(back_populates="habits")
-    logs: List["HabitLog"] = Relationship(back_populates="habit")
+    logs: list[HabitLog] = Relationship(back_populates="habit")

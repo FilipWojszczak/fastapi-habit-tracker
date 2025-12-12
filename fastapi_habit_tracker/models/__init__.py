@@ -1,6 +1,5 @@
-from .user import User
 from .habit import Habit
 from .habit_log import HabitLog
+from .user import User
 
-
-__all__ = ["User", "Habit", "HabitLog"]
+__all__ = ["Habit", "HabitLog", "User"]

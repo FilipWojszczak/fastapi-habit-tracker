@@ -1,6 +1,6 @@
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import Session, SQLModel, create_engine
 
-from . import models
+from . import models  # noqa: F401
 
 DATABASE_URL = "sqlite:///./habit_tracker.db"
 
