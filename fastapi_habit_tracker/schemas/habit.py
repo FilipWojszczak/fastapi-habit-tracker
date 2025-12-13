@@ -10,7 +10,7 @@ class HabitBase(BaseModel):
 
 
 class HabitCreate(HabitBase):
-    pass
+    model_config = {"extra": "forbid"}
 
 
 class HabitRead(HabitBase):
@@ -26,3 +26,4 @@ class HabitUpdate(BaseModel):
     name: str = Field(default=None, min_length=1)
     description: str | None = None
     period: str | None = None
+    model_config = {"extra": "forbid"}
