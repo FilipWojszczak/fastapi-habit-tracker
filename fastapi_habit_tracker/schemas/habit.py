@@ -20,3 +20,9 @@ class HabitRead(HabitBase):
 
     class Config:
         from_attributes = True
+
+
+class HabitUpdate(BaseModel):
+    name: str = Field(default=None, min_length=1)
+    description: str | None = None
+    period: str | None = None
