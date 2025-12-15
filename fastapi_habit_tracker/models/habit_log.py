@@ -12,7 +12,7 @@ class HabitLog(SQLModel, table=True):
     habit_id: int = Field(foreign_key="habit.id")
 
     performed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    note: str | None
-    duration: int | None
+    note: str | None = None
+    value: int | None = Field(default=None, ge=0)
 
     habit: Habit = Relationship(back_populates="logs")
