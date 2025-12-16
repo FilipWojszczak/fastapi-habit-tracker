@@ -8,7 +8,7 @@ class HabitLogCreate(BaseModel):
     performed_at: datetime | None = None
     note: str | None = None
     value: int | None = Field(
-        default=None, description="Minutes or repetitions (depends on habit type)"
+        default=None, description="Minutes or repetitions (depends on habit type)", ge=0
     )
 
 
