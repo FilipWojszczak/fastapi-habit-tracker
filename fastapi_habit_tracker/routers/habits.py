@@ -89,11 +89,12 @@ async def list_logs_for_habit(
     to: date | None = None,
     limit: int = Query(100, ge=1, le=1000),
 ):
-    if since > to:
-        raise HTTPException(status_code=422, detail="'since must be before 'to'")
+    if since is not None and to is not None and since > to:
+        raise HTTPException(status_code=422, detail="'since' must be before 'to'")
     habit = session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
+
     statement = select(HabitLog).where(HabitLog.habit_id == habit_id)
     if since is not None:
         since = datetime.combine(since, time.min)
@@ -102,4 +103,5 @@ async def list_logs_for_habit(
         to = datetime.combine(to, time.max)
         statement = statement.where(HabitLog.performed_at <= to)
     statement = statement.order_by(HabitLog.performed_at.desc()).limit(limit)
+
     return session.exec(statement).all()
