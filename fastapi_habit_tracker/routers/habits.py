@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 
 from ..db import get_session
 from ..dependencies.auth import get_current_user
-from ..models.habit import Habit, User
+from ..models import Habit, User
 from ..schemas.habit import HabitCreate, HabitRead, HabitUpdate
 
 router = APIRouter(prefix="/habits", tags=["habits"])
