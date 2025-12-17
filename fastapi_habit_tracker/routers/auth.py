@@ -9,9 +9,9 @@ from ..db import get_session
 from ..dependencies.auth import get_current_user
 from ..models.user import User
 from ..schemas.user import UserCreate, UserRead
-from ..utils.security import create_access_token, hash_password, verify_password
+from ..utils.security import authenticate_user, create_access_token, hash_password
 
-router = APIRouter(prefix="/auth")
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 class Token(BaseModel):
@@ -19,7 +19,17 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
-@router.post("/register", response_model=UserRead)
+@router.post(
+    "/register",
+    response_model=UserRead,
+    summary="Register a new user account",
+    description=(
+        "Creates a new user account using email and password.  \n"
+        "Validates that the email is unique and stores the password using a secure "
+        "hash.\n\n"
+        "This endpoint is publicly accessible and does not require authentication."
+    ),
+)
 async def register_user(
     user_data: UserCreate, session: Annotated[Session, Depends(get_session)]
 ):
@@ -41,14 +51,18 @@ async def register_user(
     return new_user
 
 
-def authenticate_user(email: str, password: str, session: Session) -> User | None:
-    user = session.exec(select(User).where(User.email == email)).one_or_none()
-    if not user or not verify_password(password, user.hashed_password):
-        return None
-    return user
-
-
-@router.post("/token")
+@router.post(
+    "/token",
+    summary="Log in and obtain an access token",
+    description=(
+        "Authenticates the user using email and password. "
+        "Returns a JWT access token that must be included in the `Authorization: "
+        "Bearer <token>` header for all protected endpoints.\n\n"
+        "This endpoint follows the OAuth2 Password Flow used by FastAPI's built-in "
+        "`OAuth2PasswordRequestForm`. Note that `username` in the form corresponds to "
+        "the user's email."
+    ),
+)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: Annotated[Session, Depends(get_session)],
@@ -60,6 +74,14 @@ async def login_for_access_token(
     return Token(access_token=access_token)
 
 
-@router.get("/me", response_model=UserRead, tags=["auth"])
+@router.get(
+    "/me",
+    response_model=UserRead,
+    summary="Retrieve data about authenticated user",
+    description=(
+        "Return `id`, `email` and activity state (flag which shows if account "
+        "is active)."
+    ),
+)
 async def get_my_data(user: Annotated[User, Depends(get_current_user)]):
     return user

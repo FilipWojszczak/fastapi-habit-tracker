@@ -15,7 +15,15 @@ from ..utils.stats import current_streak_days, longest_streak_days
 router = APIRouter(prefix="/habits", tags=["habits"])
 
 
-@router.post("/", response_model=HabitRead)
+@router.post(
+    "/",
+    response_model=HabitRead,
+    summary="Create a new habit for the authenticated user",
+    description=(
+        "Creates a new habit associated with the currently authenticated user.\n\n"
+        "The habit must have a name, period and optional description"
+    ),
+)
 async def create_habit(
     habit_data: HabitCreate,
     session: Annotated[Session, Depends(get_session)],
@@ -28,7 +36,16 @@ async def create_habit(
     return habit
 
 
-@router.get("/", response_model=list[HabitWithStatsRead])
+@router.get(
+    "/",
+    response_model=list[HabitWithStatsRead],
+    summary="List habits belonging to the authenticated user",
+    description=(
+        "Returns all habits owned by the authenticated user.\n\n"
+        "Only habits belonging to the current user are returned.  \n"
+        "Supports optional expansion with statistics if implemented."
+    ),
+)
 async def list_habits(
     session: Annotated[Session, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
@@ -52,7 +69,16 @@ async def list_habits(
     return to_return
 
 
-@router.get("/{habit_id}", response_model=HabitRead)
+@router.get(
+    "/{habit_id}",
+    response_model=HabitRead,
+    summary="Retrieve a single habit",
+    description=(
+        "Returns details of a habit identified by its ID.\n\n"
+        "A 404 error is returned if the habit does not exist or does not belong to the "
+        "current user."
+    ),
+)
 async def get_habit(
     habit_id: int,
     session: Annotated[Session, Depends(get_session)],
@@ -64,7 +90,18 @@ async def get_habit(
     return habit
 
 
-@router.put("/{habit_id}", response_model=HabitRead)
+@router.put(
+    "/{habit_id}",
+    response_model=HabitRead,
+    summary="Update a habit",
+    description=(
+        "Updates the selected habit.  \n"
+        "Only fields provided in the request body are modified.\n\n"
+        "Acts like a PATCH endpoint (partial update).  \n"
+        "A 404 error is returned if the habit does not exist or does not belong to the "
+        "current user."
+    ),
+)
 async def update_habit(
     habit_id: int,
     habit_data: HabitUpdate,
@@ -83,7 +120,17 @@ async def update_habit(
     return habit
 
 
-@router.delete("/{habit_id}", status_code=204)
+@router.delete(
+    "/{habit_id}",
+    status_code=204,
+    summary="Delete a habit",
+    description=(
+        "Deletes the specified habit belonging to the authenticated user.  \n"
+        "A 404 error is returned if the habit does not exist or does not belong to the "
+        "current user.\n\n"
+        "The associated logs remain in the database unless explicitly removed."
+    ),
+)
 async def delete_habit(
     habit_id: int,
     session: Annotated[Session, Depends(get_session)],
@@ -97,7 +144,19 @@ async def delete_habit(
     return {"message": "Item deleted successfully"}
 
 
-@router.get("/{habit_id}/logs", response_model=list[HabitLogRead])
+@router.get(
+    "/{habit_id}/logs",
+    response_model=list[HabitLogRead],
+    summary="List log entries for a habit",
+    description=(
+        "Returns log entries for a specific habit.\n\n"
+        "Supports filtering by date range (`since`, `to`) and a limit of returned "
+        "entries.  \n"
+        "The results are sorted from newest to oldest.\n\n"
+        "A 404 error is returned if the habit does not exist or does not belong to the "
+        "current user."
+    ),
+)
 async def list_logs_for_habit(
     habit_id: int,
     session: Annotated[Session, Depends(get_session)],
@@ -124,7 +183,18 @@ async def list_logs_for_habit(
     return session.exec(statement).all()
 
 
-@router.get("/{habit_id}/stats")
+@router.get(
+    "/{habit_id}/stats",
+    summary="Retrieve statistics for a habit",
+    description=(
+        "`total_logs` - number of all logs for a habit  \n"
+        "`last_performed_at` - timestamp for the newest log  \n"
+        "`unique_days` - number of days which any log was saved at  \n"
+        "`current_streak_days` - days with saved log in a row, calculated from today "
+        "(or yesterday if there is no log today)  \n"
+        "`longest_streak_days` - the longest set of days with saved log in a row"
+    ),
+)
 async def get_stats_for_habit(
     habit_id: int,
     session: Annotated[Session, Depends(get_session)],
