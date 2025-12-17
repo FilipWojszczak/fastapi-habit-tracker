@@ -8,7 +8,7 @@ from sqlmodel import Session, select
 from ..db import get_session
 from ..dependencies.auth import get_current_user
 from ..models import Habit, HabitLog, User
-from ..schemas.habit import HabitCreate, HabitRead, HabitUpdate
+from ..schemas.habit import HabitCreate, HabitRead, HabitUpdate, HabitWithStatsRead
 from ..schemas.habit_log import HabitLogRead
 from ..utils.stats import current_streak_days, longest_streak_days
 
@@ -28,13 +28,28 @@ async def create_habit(
     return habit
 
 
-@router.get("/", response_model=list[HabitRead])
+@router.get("/", response_model=list[HabitWithStatsRead])
 async def list_habits(
     session: Annotated[Session, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
+    include_stats: bool = False,
 ):
     habits = session.exec(select(Habit).where(Habit.user_id == user.id)).all()
-    return habits
+    if include_stats:
+        to_return = []
+        for habit in habits:
+            habit = habit.model_dump()
+            statement = select(HabitLog).where(HabitLog.habit_id == habit["id"])
+            statement = statement.order_by(HabitLog.performed_at.desc())
+            logs = session.exec(statement).all()
+            habit["stats"] = {
+                "total_logs": len(logs),
+                "current_streak_days": current_streak_days(logs),
+            }
+            to_return.append(habit)
+    else:
+        to_return = habits
+    return to_return
 
 
 @router.get("/{habit_id}", response_model=HabitRead)
