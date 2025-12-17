@@ -12,7 +12,18 @@ from ..schemas.habit_log import HabitLogCreate, HabitLogRead
 router = APIRouter(prefix="/habit-logs", tags=["habit logs"])
 
 
-@router.post("/", response_model=HabitLogRead)
+@router.post(
+    "/",
+    response_model=HabitLogRead,
+    summary="Add a new log entry to a habit",
+    description=(
+        "Creates a new log entry for the given habit.\n\n"
+        "If `performed_at` is not provided, the current timestamp is used. \n"
+        "A user may record multiple logs per day.\n\n"
+        "A 404 error is returned if the habit does not exist or does not belong to the "
+        "current user."
+    ),
+)
 async def create_habit_log(
     habit_log_data: HabitLogCreate,
     session: Annotated[Session, Depends(get_session)],

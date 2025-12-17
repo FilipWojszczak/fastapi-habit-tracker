@@ -27,3 +27,12 @@ class HabitUpdate(BaseModel):
     description: str | None = None
     period: str | None = None
     model_config = {"extra": "forbid"}
+
+
+class HabitStats(BaseModel):
+    current_streak_days: int
+    total_logs: int
+
+
+class HabitWithStatsRead(HabitRead):
+    stats: HabitStats | None = None

@@ -3,10 +3,9 @@ from typing import TYPE_CHECKING
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from .user import User
-
 if TYPE_CHECKING:
     from .habit_log import HabitLog
+    from .user import User
 
 
 class Habit(SQLModel, table=True):
