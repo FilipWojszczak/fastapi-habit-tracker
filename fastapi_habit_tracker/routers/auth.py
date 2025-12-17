@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..db import get_session
+from ..dependencies.auth import get_current_user
 from ..models.user import User
 from ..schemas.user import UserCreate, UserRead
 from ..utils.security import create_access_token, hash_password, verify_password
@@ -57,3 +58,8 @@ async def login_for_access_token(
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     access_token = create_access_token(user.id)
     return Token(access_token=access_token)
+
+
+@router.get("/me", response_model=UserRead, tags=["auth"])
+async def get_my_data(user: Annotated[User, Depends(get_current_user)]):
+    return user
