@@ -2,13 +2,10 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from itertools import pairwise
 
-from fastapi_habit_tracker.models import HabitLog
+from ..models import HabitLog
 
 
-def current_streak_days(logs: Sequence[HabitLog]) -> int:
-    if not logs:
-        return 0
-
+def _unique_dates_desc(logs: Sequence[HabitLog]) -> Sequence[HabitLog]:
     # Extract unique dates in descending order
     dates = []
     for log in logs:
@@ -16,17 +13,29 @@ def current_streak_days(logs: Sequence[HabitLog]) -> int:
         if not dates or dates[-1] != d:
             dates.append(d)
     # dates[0] = newest day, dates[-1] = oldest day
+    return dates
+
+
+def current_streak_days(descending_logs: Sequence[HabitLog]) -> int:
+    if not descending_logs:
+        return 0
+
+    unique_dates_desc = _unique_dates_desc(descending_logs)
+    for log in descending_logs:
+        d = log.performed_at.date()
+        if not unique_dates_desc or unique_dates_desc[-1] != d:
+            unique_dates_desc.append(d)
 
     today = datetime.now(UTC).date()
 
     # streak exists only if the first (newest) log is today or yesterday
-    if dates[0] < today - timedelta(days=1):
+    if unique_dates_desc[0] < today - timedelta(days=1):
         return 0
 
     streak = 1
 
     # iterate descending: dates[0], dates[1], dates[2], ...
-    for prev, curr in pairwise(dates):
+    for prev, curr in pairwise(unique_dates_desc):
         # prev is newer, curr is older
         if prev - curr == timedelta(days=1):
             streak += 1
@@ -36,22 +45,16 @@ def current_streak_days(logs: Sequence[HabitLog]) -> int:
     return streak
 
 
-def longest_streak_days(logs: Sequence[HabitLog]) -> int:
-    if not logs:
+def longest_streak_days(descending_logs: Sequence[HabitLog]) -> int:
+    if not descending_logs:
         return 0
 
-    # Extract unique dates in descending order
-    dates = []
-    for log in logs:
-        d = log.performed_at.date()
-        if not dates or dates[-1] != d:
-            dates.append(d)
-    # dates[0] = newest, dates[-1] = oldest
+    unique_dates_desc = _unique_dates_desc(descending_logs)
 
     longest = 1
     current = 1
 
-    for prev, curr in pairwise(dates):
+    for prev, curr in pairwise(unique_dates_desc):
         if prev - curr == timedelta(days=1):
             current += 1
             longest = max(longest, current)

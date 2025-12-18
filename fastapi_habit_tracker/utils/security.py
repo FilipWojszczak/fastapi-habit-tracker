@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -6,8 +7,8 @@ from sqlmodel import Session, select
 
 from ..models import User
 
-SECRET_KEY = "e4642ddb62a95a34904bc6439bb72c615cc6ba6703499d42903f428fe9f597ae"
-ALGORITHM = "HS256"
+SECRET_KEY = os.environ["SECRET_KEY"]
+ALGORITHM = os.environ["ALGORITHM"]
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
@@ -16,8 +17,6 @@ password_hash = PasswordHash.recommended()
 
 class InvalidTokenError(Exception):
     """Raised when JWT is invalid or cannot be used"""
-
-    pass
 
 
 def hash_password(password: str) -> str:
@@ -30,7 +29,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def authenticate_user(email: str, password: str, session: Session) -> User | None:
     user = session.exec(select(User).where(User.email == email)).one_or_none()
-    if not user or not verify_password(password, user.hashed_password):
+    if (
+        not user
+        or not verify_password(password, user.hashed_password)
+        or not user.is_active
+    ):
         return None
     return user
 
@@ -57,8 +60,13 @@ def verify_access_token(token: str) -> int:
     except jwt.InvalidTokenError as exc:
         # Token broken or otherwise invalid
         raise InvalidTokenError("Invalid token") from exc
+
     user_id = payload.get("sub")
     if user_id is None:
         # Token does not contain user identification
         raise InvalidTokenError("Token missing subject (sub)")
-    return int(user_id)
+
+    try:
+        return int(user_id)
+    except (TypeError, ValueError) as exc:
+        raise InvalidTokenError("Invalid subject (sub)") from exc

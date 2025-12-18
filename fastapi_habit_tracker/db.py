@@ -1,8 +1,10 @@
+import os
+
 from sqlmodel import Session, SQLModel, create_engine
 
 from . import models  # noqa: F401
 
-DATABASE_URL = "sqlite:///./habit_tracker.db"
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 engine = create_engine(DATABASE_URL, echo=True)
 

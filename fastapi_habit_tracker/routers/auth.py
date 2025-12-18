@@ -2,26 +2,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
 from sqlmodel import Session, select
 
 from ..db import get_session
 from ..dependencies.auth import get_current_user
-from ..models.user import User
+from ..models import User
+from ..schemas.auth import Token
 from ..schemas.user import UserCreate, UserRead
 from ..utils.security import authenticate_user, create_access_token, hash_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-
-
 @router.post(
     "/register",
     response_model=UserRead,
+    status_code=201,
     summary="Register a new user account",
     description=(
         "Creates a new user account using email and password.  \n"
@@ -53,6 +49,7 @@ async def register_user(
 
 @router.post(
     "/token",
+    response_model=Token,
     summary="Log in and obtain an access token",
     description=(
         "Authenticates the user using email and password. "
@@ -69,7 +66,11 @@ async def login_for_access_token(
 ):
     user = authenticate_user(form_data.username, form_data.password, session)
     if not user:
-        raise HTTPException(status_code=401, detail="Incorrect email or password")
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     access_token = create_access_token(user.id)
     return Token(access_token=access_token)
 
@@ -77,10 +78,10 @@ async def login_for_access_token(
 @router.get(
     "/me",
     response_model=UserRead,
-    summary="Retrieve data about authenticated user",
+    summary="Retrieve the currently authenticated user",
     description=(
-        "Return `id`, `email` and activity state (flag which shows if account "
-        "is active)."
+        "Returns basic information about the currently authenticated user: "
+        "`id`, `email` and the `is_active` flag."
     ),
 )
 async def get_my_data(user: Annotated[User, Depends(get_current_user)]):
