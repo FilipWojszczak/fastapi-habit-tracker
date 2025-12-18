@@ -23,7 +23,7 @@ class HabitRead(HabitBase):
 
 
 class HabitUpdate(BaseModel):
-    name: str = Field(default=None, min_length=1)
+    name: str | None = Field(default=None, min_length=1)
     description: str | None = None
     period: str | None = None
     model_config = {"extra": "forbid"}

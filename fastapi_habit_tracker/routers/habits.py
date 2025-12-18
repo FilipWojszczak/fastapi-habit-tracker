@@ -2,13 +2,18 @@ from datetime import date, datetime, time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
 
 from ..db import get_session
 from ..dependencies.auth import get_current_user
 from ..models import Habit, HabitLog, User
-from ..schemas.habit import HabitCreate, HabitRead, HabitUpdate, HabitWithStatsRead
+from ..schemas.habit import (
+    HabitCreate,
+    HabitRead,
+    HabitStats,
+    HabitUpdate,
+    HabitWithStatsRead,
+)
 from ..schemas.habit_log import HabitLogRead
 from ..utils.stats import current_streak_days, longest_streak_days
 
@@ -18,6 +23,7 @@ router = APIRouter(prefix="/habits", tags=["habits"])
 @router.post(
     "/",
     response_model=HabitRead,
+    status_code=201,
     summary="Create a new habit for the authenticated user",
     description=(
         "Creates a new habit associated with the currently authenticated user.\n\n"
@@ -43,7 +49,8 @@ async def create_habit(
     description=(
         "Returns all habits owned by the authenticated user.\n\n"
         "Only habits belonging to the current user are returned.  \n"
-        "Supports optional expansion with statistics if implemented."
+        "Supports optional expansion with statistics using the `include_stats` query "
+        "parameter."
     ),
 )
 async def list_habits(
@@ -52,20 +59,34 @@ async def list_habits(
     include_stats: bool = False,
 ):
     habits = session.exec(select(Habit).where(Habit.user_id == user.id)).all()
-    if include_stats:
-        to_return = []
-        for habit in habits:
-            habit = habit.model_dump()
-            statement = select(HabitLog).where(HabitLog.habit_id == habit["id"])
-            statement = statement.order_by(HabitLog.performed_at.desc())
-            logs = session.exec(statement).all()
-            habit["stats"] = {
-                "total_logs": len(logs),
-                "current_streak_days": current_streak_days(logs),
-            }
-            to_return.append(habit)
-    else:
-        to_return = habits
+    if not include_stats:
+        return habits
+
+    habit_ids = [h.id for h in habits]
+    logs_by_habit: dict[int, list[HabitLog]] = {hid: [] for hid in habit_ids}
+
+    if habit_ids:
+        logs = session.exec(
+            select(HabitLog)
+            .where(HabitLog.habit_id.in_(habit_ids))
+            .order_by(HabitLog.habit_id, HabitLog.performed_at.desc())
+        ).all()
+
+        for log in logs:
+            logs_by_habit[log.habit_id].append(log)
+
+    to_return: list[HabitWithStatsRead] = []
+    for habit in habits:
+        habit_logs = logs_by_habit.get(habit.id, [])
+
+        habit_out = HabitWithStatsRead.model_validate(habit, from_attributes=True)
+        habit_out.stats = HabitStats(
+            total_logs=len(habit_logs),
+            current_streak_days=current_streak_days(habit_logs),
+        )
+
+        to_return.append(habit_out)
+
     return to_return
 
 
@@ -141,7 +162,7 @@ async def delete_habit(
         raise HTTPException(status_code=404, detail="Habit not found")
     session.delete(habit)
     session.commit()
-    return {"message": "Item deleted successfully"}
+    return
 
 
 @router.get(
@@ -218,11 +239,20 @@ async def get_stats_for_habit(
     statement = statement.order_by(HabitLog.performed_at.desc())
     logs = session.exec(statement).all()
 
+    if not logs:
+        return {
+            "total_logs": 0,
+            "last_performed_at": None,
+            "unique_days": 0,
+            "current_streak_days": 0,
+            "longest_streak_days": 0,
+        }
+
     to_return = {}
     to_return["total_logs"] = len(logs)
-    to_return["last_performed_at"] = str(session.exec(statement).first().performed_at)
+    to_return["last_performed_at"] = logs[0].performed_at
     to_return["unique_days"] = len(set(log.performed_at.date() for log in logs))
     to_return["current_streak_days"] = current_streak_days(logs)
     to_return["longest_streak_days"] = longest_streak_days(logs)
 
-    return JSONResponse(to_return)
+    return to_return

@@ -15,6 +15,7 @@ router = APIRouter(prefix="/habit-logs", tags=["habit logs"])
 @router.post(
     "/",
     response_model=HabitLogRead,
+    status_code=201,
     summary="Add a new log entry to a habit",
     description=(
         "Creates a new log entry for the given habit.\n\n"
@@ -32,9 +33,11 @@ async def create_habit_log(
     habit = session.get(Habit, habit_log_data.habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
-    if habit_log_data.performed_at is None:
-        habit_log_data.performed_at = datetime.now(UTC)
-    habit_log = HabitLog(**habit_log_data.model_dump())
+    data = habit_log_data.model_dump()
+
+    if data["performed_at"] is None:
+        data["performed_at"] = datetime.now(UTC)
+    habit_log = HabitLog(**data)
     session.add(habit_log)
     session.commit()
     session.refresh(habit_log)

@@ -16,9 +16,9 @@ class HabitLogRead(BaseModel):
     id: int
     habit_id: int
     performed_at: datetime
-    note: str | None
+    note: str | None = None
     value: int | None = Field(
-        description="Minutes or repetitions (depends on habit type)"
+        default=None, description="Minutes or repetitions (depends on habit type)"
     )
 
     class Config:

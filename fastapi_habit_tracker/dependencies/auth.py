@@ -5,13 +5,13 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session
 
 from ..db import get_session
-from ..models.user import User
+from ..models import User
 from ..utils.security import InvalidTokenError, verify_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
-async def get_current_user(
+def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
     session: Annotated[Session, Depends(get_session)],
 ) -> User:
@@ -28,5 +28,5 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
     if not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
+        raise HTTPException(status_code=403, detail="Inactive user")
     return user
