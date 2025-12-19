@@ -1,10 +1,10 @@
-import os
-
 from sqlmodel import Session, SQLModel, create_engine
 
 from . import models  # noqa: F401
+from .config import get_settings
 
-DATABASE_URL = os.environ["DATABASE_URL"]
+settings = get_settings()
+DATABASE_URL = settings.database_url
 
 engine = create_engine(DATABASE_URL, echo=True)
 

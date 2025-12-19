@@ -1,14 +1,15 @@
-import os
 from datetime import UTC, datetime, timedelta
 
 import jwt
 from pwdlib import PasswordHash
 from sqlmodel import Session, select
 
+from ..config import get_settings
 from ..models import User
 
-SECRET_KEY = os.environ["SECRET_KEY"]
-ALGORITHM = os.environ["ALGORITHM"]
+settings = get_settings()
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 

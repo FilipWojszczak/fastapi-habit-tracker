@@ -1,12 +1,9 @@
 from contextlib import asynccontextmanager
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from .db import init_db
 from .routers import auth, habit_logs, habits
-
-load_dotenv()
 
 
 @asynccontextmanager
