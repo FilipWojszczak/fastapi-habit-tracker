@@ -1,8 +1,6 @@
-# Env vars
-.env
-
 # Virtual env
 .venv/
+.env
 
 # Ruff cache
 .ruff_cache/

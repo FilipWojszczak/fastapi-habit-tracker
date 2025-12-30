@@ -1,3 +1,10 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fastapi_habit_tracker"]
+
 [project]
 name = "fastapi-habit-tracker"
 version = "0.1.0"
@@ -6,9 +13,12 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "aiosqlite>=0.21.0",
+    "alembic>=1.17.2",
     "fastapi[standard]>=0.123.4",
     "pwdlib[argon2]>=0.3.0",
+    "pydantic-settings>=2.12.0",
     "pyjwt>=2.10.1",
+    "pytest>=9.0.2",
     "python-dotenv>=1.2.1",
     "ruff>=0.14.7",
     "sqlalchemy>=2.0",
@@ -56,5 +66,6 @@ line-ending = "auto"
 
 [dependency-groups]
 dev = [
+    "hatchling>=1.28.0",
     "pre-commit>=4.5.0",
 ]
