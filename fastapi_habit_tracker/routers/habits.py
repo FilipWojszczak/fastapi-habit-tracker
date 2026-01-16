@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -132,9 +132,9 @@ async def update_habit(
     habit = session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
+    habit.updated_at = datetime.now(UTC)
     habit_data_dict = habit_data.model_dump(exclude_unset=True)
-    for key, value in habit_data_dict.items():
-        setattr(habit, key, value)
+    habit.sqlmodel_update(habit_data_dict)
     session.add(habit)
     session.commit()
     session.refresh(habit)
