@@ -1,11 +1,20 @@
 from datetime import UTC, datetime
+from enum import Enum
 from typing import TYPE_CHECKING
 
+from sqlalchemy import Column
+from sqlalchemy import Enum as SAEnum
 from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from .habit_log import HabitLog
     from .user import User
+
+
+class HabitPeriod(str, Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
 
 
 class Habit(SQLModel, table=True):
@@ -14,7 +23,13 @@ class Habit(SQLModel, table=True):
 
     name: str
     description: str | None = None
-    period: str  # "daily" | "weekly"
+    period: HabitPeriod = Field(
+        sa_column=Column(
+            "habit_period",
+            SAEnum(HabitPeriod, values_callable=lambda x: [e.value for e in x]),
+            nullable=False,
+        )
+    )
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
