@@ -10,6 +10,7 @@ class HabitLogCreate(BaseModel):
     performed_at: datetime | None = None
     note: str | None = None
     value: int | None = Field(default=None, description=value_description, ge=0)
+    model_config = {"extra": "forbid"}
 
 
 class HabitLogRead(BaseModel):
