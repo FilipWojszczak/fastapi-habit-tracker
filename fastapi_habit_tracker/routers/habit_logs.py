@@ -66,6 +66,10 @@ async def update_habit_log(
     if not habit_log or habit_log.habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit log not found")
     habit_log_data_dict = habit_log_data.model_dump(exclude_unset=True)
+    if "habit_id" in habit_log_data_dict:
+        new_habit = session.get(Habit, habit_log_data_dict["habit_id"])
+        if not new_habit or new_habit.user_id != user.id:
+            raise HTTPException(status_code=404, detail="Habit not found")
     habit_log.sqlmodel_update(habit_log_data_dict)
     session.add(habit_log)
     session.commit()
