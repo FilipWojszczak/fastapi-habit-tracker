@@ -2,11 +2,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from ..models.habit import HabitPeriod
+
 
 class HabitBase(BaseModel):
     name: str = Field(min_length=1)
     description: str | None = None
-    period: str
+    period: HabitPeriod
 
 
 class HabitCreate(HabitBase):
@@ -25,7 +27,7 @@ class HabitRead(HabitBase):
 class HabitUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1)
     description: str | None = None
-    period: str | None = None
+    period: HabitPeriod | None = None
     model_config = {"extra": "forbid"}
 
 

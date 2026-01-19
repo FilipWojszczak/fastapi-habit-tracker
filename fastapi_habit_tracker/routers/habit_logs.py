@@ -7,7 +7,7 @@ from sqlmodel import Session
 from ..db import get_session
 from ..dependencies.auth import get_current_user
 from ..models import Habit, HabitLog, User
-from ..schemas.habit_log import HabitLogCreate, HabitLogRead
+from ..schemas.habit_log import HabitLogCreate, HabitLogRead, HabitLogUpdate
 
 router = APIRouter(prefix="/habit-logs", tags=["habit logs"])
 
@@ -42,3 +42,59 @@ async def create_habit_log(
     session.commit()
     session.refresh(habit_log)
     return habit_log
+
+
+@router.put(
+    "/{habit_log_id}",
+    response_model=HabitLogRead,
+    summary="Update an existing habit log",
+    description=(
+        "Updates the selected habit log.  \n"
+        "Only fields provided in the request body are modified.\n\n"
+        "Acts like a PATCH endpoint (partial update).  \n"
+        "A 404 error is returned if the habit log does not exist or does not belong to "
+        "the current user."
+    ),
+)
+async def update_habit_log(
+    habit_log_id: int,
+    habit_log_data: HabitLogUpdate,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    habit_log = session.get(HabitLog, habit_log_id)
+    if not habit_log or habit_log.habit.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Habit log not found")
+    habit_log_data_dict = habit_log_data.model_dump(exclude_unset=True)
+    if "habit_id" in habit_log_data_dict:
+        new_habit = session.get(Habit, habit_log_data_dict["habit_id"])
+        if not new_habit or new_habit.user_id != user.id:
+            raise HTTPException(status_code=404, detail="Habit not found")
+    habit_log.sqlmodel_update(habit_log_data_dict)
+    session.add(habit_log)
+    session.commit()
+    session.refresh(habit_log)
+    return habit_log
+
+
+@router.delete(
+    "/{habit_log_id}",
+    status_code=204,
+    summary="Delete a habit log",
+    description=(
+        "Deletes the selected habit log.\n\n"
+        "A 404 error is returned if the habit log does not exist or does not belong to "
+        "the current user."
+    ),
+)
+async def delete_habit_log(
+    habit_log_id: int,
+    session: Annotated[Session, Depends(get_session)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    habit_log = session.get(HabitLog, habit_log_id)
+    if not habit_log or habit_log.habit.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Habit log not found")
+    session.delete(habit_log)
+    session.commit()
+    return
