@@ -1,0 +1,26 @@
+# Git files
+.git
+.gitignore
+
+# Virtual env
+.venv/
+.env
+.python-version
+
+# Ruff cache
+.ruff_cache/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Development configurations and tests
+.pre-commit-config.yaml
+tests/
+
+# VS Code
+.vscode/
+
+# Database files
+habit_tracker.db
+*.dbj
