@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, time
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import selectinload
 from sqlmodel import Session, select
 
 from ..db import get_session
@@ -58,31 +59,24 @@ async def list_habits(
     user: Annotated[User, Depends(get_current_user)],
     include_stats: bool = False,
 ):
-    habits = session.exec(select(Habit).where(Habit.user_id == user.id)).all()
+    statement = select(Habit).where(Habit.user_id == user.id)
+
+    if include_stats:
+        statement = statement.options(selectinload(Habit.logs))
+
+    habits = session.exec(statement).all()
+
     if not include_stats:
         return habits
 
-    habit_ids = [h.id for h in habits]
-    logs_by_habit: dict[int, list[HabitLog]] = {hid: [] for hid in habit_ids}
-
-    if habit_ids:
-        logs = session.exec(
-            select(HabitLog)
-            .where(HabitLog.habit_id.in_(habit_ids))
-            .order_by(HabitLog.habit_id, HabitLog.performed_at.desc())
-        ).all()
-
-        for log in logs:
-            logs_by_habit[log.habit_id].append(log)
-
     to_return: list[HabitWithStatsRead] = []
     for habit in habits:
-        habit_logs = logs_by_habit.get(habit.id, [])
+        logs = sorted(habit.logs, key=lambda log: log.performed_at, reverse=True)
 
-        habit_out = HabitWithStatsRead.model_validate(habit, from_attributes=True)
+        habit_out = HabitWithStatsRead.model_validate(habit)
         habit_out.stats = HabitStats(
-            total_logs=len(habit_logs),
-            current_streak_days=current_streak_days(habit_logs),
+            total_logs=len(logs),
+            current_streak_days=current_streak_days(logs),
         )
 
         to_return.append(habit_out)
