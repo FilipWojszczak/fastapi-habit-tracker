@@ -1,0 +1,24 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql+psycopg://habit_tracker_user:habit_tracker_password@db:5432/habit_tracker_db
+    depends_on:
+      - db
+  db:
+    image: postgres:17
+    environment:
+      - POSTGRES_USER=habit_tracker_user
+      - POSTGRES_PASSWORD=habit_tracker_password
+      - POSTGRES_DB=habit_tracker_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
