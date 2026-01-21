@@ -7,8 +7,14 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql+psycopg://habit_tracker_user:habit_tracker_password@db:5432/habit_tracker_db
+      - PYTHONDONTWRITEBYTECODE=1
     depends_on:
       - db
+    volumes:
+      - .:/app
+      - /app/.venv
+    command: uv run uvicorn fastapi_habit_tracker.main:app --host 0.0.0.0 --port 8000 --reload
+
   db:
     image: postgres:17
     environment:
