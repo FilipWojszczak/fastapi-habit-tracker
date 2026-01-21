@@ -1,7 +1,7 @@
 import os
 
 from dotenv import load_dotenv
-from sqlmodel import Session, SQLModel, create_engine, select, text
+from sqlmodel import Session, SQLModel, create_engine, select, text  # noqa: F401
 
 from fastapi_habit_tracker.models import Habit, HabitLog, User
 
@@ -25,8 +25,9 @@ def migrate():
     pg_engine = create_engine(POSTGRES_URL)
 
     # Creating tables
-    print("Creating tables in PostgreSQL...")
-    SQLModel.metadata.create_all(pg_engine)
+    # This step is not needed if tables are already created via migrations
+    # print("Creating tables in PostgreSQL...")
+    # SQLModel.metadata.create_all(pg_engine)
 
     with Session(sqlite_engine) as src_session, Session(pg_engine) as dst_session:
         # Migration of User model
