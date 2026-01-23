@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
@@ -11,12 +13,25 @@ from fastapi_habit_tracker.utils.security import hash_password
 
 @pytest.fixture(name="session")
 def session_fixture():
-    engine = create_engine(
-        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-    )
+    database_url = os.getenv("DATABASE_URL", "sqlite://")
+    if "postgres" in database_url:
+        engine = create_engine(database_url)
+    else:
+        engine = create_engine(
+            "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+        )
     SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
+
+    connection = engine.connect()
+    transaction = connection.begin()
+
+    session = Session(bind=connection)
+
+    yield session
+
+    session.close()
+    transaction.rollback()
+    connection.close()
 
 
 @pytest.fixture(name="client")

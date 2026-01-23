@@ -1,10 +1,10 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class UserRead(BaseModel):
@@ -12,5 +12,4 @@ class UserRead(BaseModel):
     email: EmailStr
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
