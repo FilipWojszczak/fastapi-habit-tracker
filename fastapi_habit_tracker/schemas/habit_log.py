@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 value_description = "Minutes or repetitions (depends on habit type)"
 
@@ -10,7 +10,7 @@ class HabitLogCreate(BaseModel):
     performed_at: datetime | None = None
     note: str | None = None
     value: int | None = Field(default=None, description=value_description, ge=0)
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
 
 
 class HabitLogRead(BaseModel):
@@ -20,8 +20,7 @@ class HabitLogRead(BaseModel):
     note: str | None = None
     value: int | None = Field(default=None, description=value_description)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HabitLogUpdate(BaseModel):
@@ -29,4 +28,4 @@ class HabitLogUpdate(BaseModel):
     performed_at: datetime | None = None
     note: str | None = None
     value: int | None = Field(default=None, description=value_description, ge=0)
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid")
