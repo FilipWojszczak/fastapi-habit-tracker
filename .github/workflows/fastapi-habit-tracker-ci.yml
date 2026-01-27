@@ -25,8 +25,12 @@ jobs:
           --health-retries 5
     env:
       SECRET_KEY: ${{ secrets.TEST_SECRET_KEY}}
-      DATABASE_URL: "postgresql+psycopg://user:password@localhost:5432/test_db"
       ALGORITHM: ${{ secrets.TEST_ALGORITHM }}
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: test_db
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
 
     steps:
     - name: Checkout code
