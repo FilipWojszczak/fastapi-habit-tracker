@@ -1,12 +1,10 @@
 services:
   test_db:
     image: postgres:17
-    environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=test_db
+    env_file:
+      - .env.test
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d test_db"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 5
