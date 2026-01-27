@@ -3,14 +3,13 @@ from sqlmodel import Session, create_engine
 from . import models  # noqa: F401
 from .config import get_settings
 
-settings = get_settings()
-DATABASE_URL = settings.database_url
+database_url = get_settings().database_url
 
 engine = create_engine(
-    DATABASE_URL,
+    database_url,
     echo=True,
     connect_args={"check_same_thread": False}
-    if DATABASE_URL.startswith("sqlite")
+    if database_url.startswith("sqlite")
     else {},
 )
 
