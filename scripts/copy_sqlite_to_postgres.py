@@ -1,21 +1,18 @@
-import os
-
-from dotenv import load_dotenv
 from sqlmodel import Session, SQLModel, create_engine, select, text  # noqa: F401
 
+from fastapi_habit_tracker.config import get_settings
 from fastapi_habit_tracker.models import Habit, HabitLog, User
 
-# Load variables from .env
-load_dotenv()
-
-POSTGRES_URL = os.getenv("DATABASE_URL")
+settings = get_settings()
+POSTGRES_URL = settings.database_url
 SQLITE_URL = "sqlite:///./habit_tracker.db"
 
 
 def migrate():
     if not POSTGRES_URL or "postgresql" not in POSTGRES_URL:
         print(
-            "Error: DATABASE_URL in .env is not configured correctly with PostgreSQL!"
+            "Error: POSTGRES_ variable set in .env is not configured correctly with "
+            "PostgreSQL!"
         )
         return
 

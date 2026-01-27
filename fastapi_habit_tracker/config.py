@@ -38,7 +38,7 @@ class Settings(BaseSettings):
                 f"{self.postgres_port}/{self.postgres_db}"
             )
         raise ValueError(
-            "No database configuration! Set DATABASE_URL or POSTGRES_* variable set."
+            "No database configuration! Set _DATABASE_URL or POSTGRES_* variable set."
         )
 
 

@@ -1,12 +1,11 @@
-import os
 from logging.config import fileConfig
 
 from alembic import context
-from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
 import fastapi_habit_tracker.models  # noqa: F401
+from fastapi_habit_tracker.config import get_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,9 +27,8 @@ target_metadata = SQLModel.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-load_dotenv()
-database_url = os.environ["DATABASE_URL"]
-config.set_main_option("sqlalchemy.url", database_url)
+settings = get_settings()
+config.set_main_option("sqlalchemy.url", settings.database_url)
 
 
 def run_migrations_offline() -> None:

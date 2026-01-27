@@ -1,10 +1,8 @@
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
-from sqlmodel.pool import StaticPool
 
+from fastapi_habit_tracker.config import get_settings
 from fastapi_habit_tracker.db import get_session
 from fastapi_habit_tracker.main import app
 from fastapi_habit_tracker.models import Habit, HabitLog, User  # noqa: F401
@@ -13,13 +11,11 @@ from fastapi_habit_tracker.utils.security import hash_password
 
 @pytest.fixture(name="session")
 def session_fixture():
-    database_url = os.getenv("DATABASE_URL", "sqlite://")
+    database_url = get_settings().database_url
     if "postgres" in database_url:
         engine = create_engine(database_url)
     else:
-        engine = create_engine(
-            "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
-        )
+        raise ValueError("database_url must be set to a PostgreSQL database for tests.")
     SQLModel.metadata.create_all(engine)
 
     connection = engine.connect()
