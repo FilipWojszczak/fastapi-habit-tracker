@@ -1,3 +1,5 @@
+from datetime import UTC, datetime, timedelta
+
 from fastapi.testclient import TestClient
 
 from fastapi_habit_tracker.models import User
@@ -19,9 +21,11 @@ def test_habit_logs_create_list(client: TestClient, user: User):
     habit_id = habit_data["id"]
 
     # Create new habit logs
+    yesterday = datetime.now(UTC) - timedelta(days=1)
+
     response = client.post(
         "/habit-logs/",
-        json={"habit_id": habit_id},
+        json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
         headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
     )
     log_data = response.json()
@@ -29,7 +33,10 @@ def test_habit_logs_create_list(client: TestClient, user: User):
     assert log_data["habit_id"] == habit_id
     assert log_data["note"] is None
     assert log_data["value"] is None
-    assert "performed_at" in log_data
+    response_date = datetime.fromisoformat(log_data["performed_at"])
+    if response_date.tzinfo is None:
+        response_date = response_date.replace(tzinfo=UTC)
+    assert response_date == yesterday
 
     response = client.post(
         "/habit-logs/",
@@ -43,16 +50,57 @@ def test_habit_logs_create_list(client: TestClient, user: User):
     assert log2_data["value"] == 30
     assert "performed_at" in log2_data
 
-    # List habit logs
+    # List all habit logs
     response = client.get(
-        f"/habits/{habit_id}/logs/?limit=1",
+        f"/habits/{habit_id}/logs/",
         headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
     )
     logs = response.json()
     assert response.status_code == 200
-    assert len(logs) == 1
+    assert len(logs) == 2
     assert logs[0]["id"] == log2_data["id"]
     assert logs[0]["habit_id"] == log2_data["habit_id"]
     assert logs[0]["note"] == log2_data["note"]
     assert logs[0]["value"] == log2_data["value"]
     assert logs[0]["performed_at"] == log2_data["performed_at"]
+
+    assert logs[1]["id"] == log_data["id"]
+    assert logs[1]["habit_id"] == log_data["habit_id"]
+    assert logs[1]["note"] == log_data["note"]
+    assert logs[1]["value"] == log_data["value"]
+    assert logs[1]["performed_at"] == log_data["performed_at"]
+
+    # Update the habit log
+    response = client.put(
+        f"/habit-logs/{log_data['id']}",
+        json={"note": "Updated note", "value": 15},
+        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+    )
+    updated_log_data = response.json()
+    assert response.status_code == 200
+    assert updated_log_data["id"] == log_data["id"]
+    assert updated_log_data["habit_id"] == habit_id
+    assert updated_log_data["note"] == "Updated note"
+    assert updated_log_data["value"] == 15
+    assert updated_log_data["performed_at"] == log_data["performed_at"]
+
+    # List habit logs after updating one of them with all possible params
+    first_log_date = datetime.fromisoformat(log_data["performed_at"]).date()
+
+    limit = 1
+    since = first_log_date
+    to = first_log_date
+
+    response = client.get(
+        f"/habits/{habit_id}/logs/?limit={limit}&since={since}&to={to}",
+        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+    )
+    logs = response.json()
+    assert response.status_code == 200
+    assert len(logs) == 1
+
+    assert logs[0]["id"] == updated_log_data["id"]
+    assert logs[0]["habit_id"] == updated_log_data["habit_id"]
+    assert logs[0]["note"] == updated_log_data["note"]
+    assert logs[0]["value"] == updated_log_data["value"]
+    assert logs[0]["performed_at"] == updated_log_data["performed_at"]
