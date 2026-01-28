@@ -21,10 +21,6 @@ def current_streak_days(descending_logs: Sequence[HabitLog]) -> int:
         return 0
 
     unique_dates_desc = _unique_dates_desc(descending_logs)
-    for log in descending_logs:
-        d = log.performed_at.date()
-        if not unique_dates_desc or unique_dates_desc[-1] != d:
-            unique_dates_desc.append(d)
 
     today = datetime.now(UTC).date()
 
