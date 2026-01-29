@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -225,28 +225,42 @@ async def get_stats_for_habit(
 
     statement = select(HabitLog).where(HabitLog.habit_id == habit_id)
     if since is not None:
-        since = datetime.combine(since, time.min)
-        statement = statement.where(HabitLog.performed_at >= since)
+        since_dt = datetime.combine(since, time.min)
+        statement = statement.where(HabitLog.performed_at >= since_dt)
     if to is not None:
-        to = datetime.combine(to, time.max)
-        statement = statement.where(HabitLog.performed_at <= to)
+        to_dt = datetime.combine(to, time.max)
+        statement = statement.where(HabitLog.performed_at <= to_dt)
     statement = statement.order_by(HabitLog.performed_at.desc())
     logs = session.exec(statement).all()
 
     if not logs:
-        return {
+        to_return = {
             "total_logs": 0,
             "last_performed_at": None,
             "unique_days": 0,
-            "current_streak_days": 0,
             "longest_streak_days": 0,
         }
+    else:
+        to_return = {}
+        to_return["total_logs"] = len(logs)
+        to_return["last_performed_at"] = logs[0].performed_at
+        to_return["unique_days"] = len(set(log.performed_at.date() for log in logs))
+        to_return["longest_streak_days"] = longest_streak_days(logs)
 
-    to_return = {}
-    to_return["total_logs"] = len(logs)
-    to_return["last_performed_at"] = logs[0].performed_at
-    to_return["unique_days"] = len(set(log.performed_at.date() for log in logs))
-    to_return["current_streak_days"] = current_streak_days(logs)
-    to_return["longest_streak_days"] = longest_streak_days(logs)
+    today = datetime.now(UTC).date()
+    yesterday = today - timedelta(days=1)
+
+    is_range_historical = to is not None and to < yesterday
+    is_range_future = since is not None and since > today
+
+    if is_range_historical or is_range_future:
+        to_return["current_streak_days"] = (
+            "The provided date range does not include today or yesterday."
+        )
+    else:
+        if not logs:
+            to_return["current_streak_days"] = 0
+        else:
+            to_return["current_streak_days"] = current_streak_days(logs)
 
     return to_return
