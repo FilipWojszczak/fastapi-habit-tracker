@@ -1,3 +1,5 @@
+from collections.abc import Generator
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
@@ -10,7 +12,7 @@ from fastapi_habit_tracker.utils.security import create_access_token, hash_passw
 
 
 @pytest.fixture(name="session")
-def session_fixture():
+def session_fixture() -> Generator[Session]:
     database_url = get_settings().database_url
     if "postgres" in database_url:
         engine = create_engine(database_url)
@@ -31,7 +33,7 @@ def session_fixture():
 
 
 @pytest.fixture(name="client")
-def client_fixture(session: Session):
+def client_fixture(session: Session) -> Generator[TestClient]:
     def get_session_override():
         return session
 
@@ -42,7 +44,7 @@ def client_fixture(session: Session):
 
 
 @pytest.fixture(name="user")
-def user_fixture(session: Session):
+def user_fixture(session: Session) -> User:
     email = "john.smith@example.com"
     password = "securepassword"
     hashed_password = hash_password(password)
@@ -54,5 +56,5 @@ def user_fixture(session: Session):
 
 
 @pytest.fixture(name="token")
-def token_fixture(user: User):
+def token_fixture(user: User) -> str:
     return create_access_token(user.id)
