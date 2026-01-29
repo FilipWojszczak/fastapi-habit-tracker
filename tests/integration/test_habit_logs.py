@@ -2,11 +2,8 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
-from fastapi_habit_tracker.models import User
-from fastapi_habit_tracker.utils.security import create_access_token
 
-
-def test_habit_logs_create_list(client: TestClient, user: User):
+def test_habit_logs_create_list(client: TestClient, token: str):
     # Create a new habit first
     response = client.post(
         "/habits/",
@@ -15,7 +12,7 @@ def test_habit_logs_create_list(client: TestClient, user: User):
             "description": "Read for 30 minutes",
             "period": "daily",
         },
-        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     habit_data = response.json()
     habit_id = habit_data["id"]
@@ -26,7 +23,7 @@ def test_habit_logs_create_list(client: TestClient, user: User):
     response = client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
-        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     log_data = response.json()
     assert response.status_code == 201
@@ -41,7 +38,7 @@ def test_habit_logs_create_list(client: TestClient, user: User):
     response = client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "note": "Example note", "value": 30},
-        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     log2_data = response.json()
     assert response.status_code == 201
@@ -53,7 +50,7 @@ def test_habit_logs_create_list(client: TestClient, user: User):
     # List all habit logs
     response = client.get(
         f"/habits/{habit_id}/logs/",
-        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     logs = response.json()
     assert response.status_code == 200
@@ -74,7 +71,7 @@ def test_habit_logs_create_list(client: TestClient, user: User):
     response = client.put(
         f"/habit-logs/{log_data['id']}",
         json={"note": "Updated note", "value": 15},
-        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     updated_log_data = response.json()
     assert response.status_code == 200
@@ -93,7 +90,7 @@ def test_habit_logs_create_list(client: TestClient, user: User):
 
     response = client.get(
         f"/habits/{habit_id}/logs/?limit={limit}&since={since}&to={to}",
-        headers={"Authorization": f"Bearer {create_access_token(user.id)}"},
+        headers={"Authorization": f"Bearer {token}"},
     )
     logs = response.json()
     assert response.status_code == 200

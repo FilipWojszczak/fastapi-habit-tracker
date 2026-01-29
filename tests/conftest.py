@@ -6,7 +6,7 @@ from fastapi_habit_tracker.config import get_settings
 from fastapi_habit_tracker.db import get_session
 from fastapi_habit_tracker.main import app
 from fastapi_habit_tracker.models import Habit, HabitLog, User  # noqa: F401
-from fastapi_habit_tracker.utils.security import hash_password
+from fastapi_habit_tracker.utils.security import create_access_token, hash_password
 
 
 @pytest.fixture(name="session")
@@ -51,3 +51,8 @@ def user_fixture(session: Session):
     session.commit()
     session.refresh(user)
     return user
+
+
+@pytest.fixture(name="token")
+def token_fixture(user: User):
+    return create_access_token(user.id)
