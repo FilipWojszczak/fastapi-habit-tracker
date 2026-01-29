@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from tests.utils import dt_with_tzinfo_from_isoformat
 
 
 def test_habit_crud(client: TestClient, token: str):
@@ -95,9 +96,7 @@ def test_habit_stats(client: TestClient, token: str):
     stats_data = response.json()
     assert response.status_code == 200
     assert stats_data["total_logs"] == 1
-    last_performed_at = datetime.fromisoformat(stats_data["last_performed_at"])
-    if last_performed_at.tzinfo is None:
-        last_performed_at = last_performed_at.replace(tzinfo=UTC)
+    last_performed_at = dt_with_tzinfo_from_isoformat(stats_data["last_performed_at"])
     assert last_performed_at == past_date
     assert stats_data["unique_days"] == 1
     assert stats_data["longest_streak_days"] == 1
@@ -120,9 +119,7 @@ def test_habit_stats(client: TestClient, token: str):
     stats_data = response.json()
     assert response.status_code == 200
     assert stats_data["total_logs"] == 2
-    last_performed_at = datetime.fromisoformat(stats_data["last_performed_at"])
-    if last_performed_at.tzinfo is None:
-        last_performed_at = last_performed_at.replace(tzinfo=UTC)
+    last_performed_at = dt_with_tzinfo_from_isoformat(stats_data["last_performed_at"])
     assert last_performed_at == yesterday
     assert stats_data["unique_days"] == 2
     assert stats_data["longest_streak_days"] == 1
@@ -156,9 +153,7 @@ def test_habit_stats(client: TestClient, token: str):
     stats_data = response.json()
     assert response.status_code == 200
     assert stats_data["total_logs"] == 8
-    last_performed_at = datetime.fromisoformat(stats_data["last_performed_at"])
-    if last_performed_at.tzinfo is None:
-        last_performed_at = last_performed_at.replace(tzinfo=UTC)
+    last_performed_at = dt_with_tzinfo_from_isoformat(stats_data["last_performed_at"])
     assert last_performed_at == today
     assert stats_data["unique_days"] == 8
     assert stats_data["longest_streak_days"] == 4
@@ -190,9 +185,7 @@ def test_habit_stats(client: TestClient, token: str):
     stats_data = response.json()
     assert response.status_code == 200
     assert stats_data["total_logs"] == 10
-    last_performed_at = datetime.fromisoformat(stats_data["last_performed_at"])
-    if last_performed_at.tzinfo is None:
-        last_performed_at = last_performed_at.replace(tzinfo=UTC)
+    last_performed_at = dt_with_tzinfo_from_isoformat(stats_data["last_performed_at"])
     assert last_performed_at == newer_today
     assert stats_data["unique_days"] == 8
     assert stats_data["longest_streak_days"] == 4
@@ -208,9 +201,7 @@ def test_habit_stats(client: TestClient, token: str):
     stats_data = response.json()
     assert response.status_code == 200
     assert stats_data["total_logs"] == 5
-    last_performed_at = datetime.fromisoformat(stats_data["last_performed_at"])
-    if last_performed_at.tzinfo is None:
-        last_performed_at = last_performed_at.replace(tzinfo=UTC)
+    last_performed_at = dt_with_tzinfo_from_isoformat(stats_data["last_performed_at"])
     assert last_performed_at == yesterday
     assert stats_data["unique_days"] == 4
     assert stats_data["longest_streak_days"] == 3
@@ -225,9 +216,7 @@ def test_habit_stats(client: TestClient, token: str):
     stats_data = response.json()
     assert response.status_code == 200
     assert stats_data["total_logs"] == 5
-    last_performed_at = datetime.fromisoformat(stats_data["last_performed_at"])
-    if last_performed_at.tzinfo is None:
-        last_performed_at = last_performed_at.replace(tzinfo=UTC)
+    last_performed_at = dt_with_tzinfo_from_isoformat(stats_data["last_performed_at"])
     assert last_performed_at == newer_today
     assert stats_data["unique_days"] == 3
     assert stats_data["longest_streak_days"] == 2
@@ -242,9 +231,7 @@ def test_habit_stats(client: TestClient, token: str):
     stats_data = response.json()
     assert response.status_code == 200
     assert stats_data["total_logs"] == 3
-    last_performed_at = datetime.fromisoformat(stats_data["last_performed_at"])
-    if last_performed_at.tzinfo is None:
-        last_performed_at = last_performed_at.replace(tzinfo=UTC)
+    last_performed_at = dt_with_tzinfo_from_isoformat(stats_data["last_performed_at"])
     assert last_performed_at == today - timedelta(days=7)
     assert stats_data["unique_days"] == 3
     assert stats_data["longest_streak_days"] == 2

@@ -1,6 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from tests.utils import dt_with_tzinfo_from_isoformat
 
 
 def test_habit_logs_crud(client: TestClient, token: str):
@@ -30,9 +31,7 @@ def test_habit_logs_crud(client: TestClient, token: str):
     assert log_data["habit_id"] == habit_id
     assert log_data["note"] is None
     assert log_data["value"] is None
-    response_date = datetime.fromisoformat(log_data["performed_at"])
-    if response_date.tzinfo is None:
-        response_date = response_date.replace(tzinfo=UTC)
+    response_date = dt_with_tzinfo_from_isoformat(log_data["performed_at"])
     assert response_date == yesterday
 
     response = client.post(
