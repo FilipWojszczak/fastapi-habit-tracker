@@ -3,8 +3,8 @@ from datetime import UTC, datetime, timedelta
 from fastapi.testclient import TestClient
 
 
-def test_habit_logs_create_list(client: TestClient, token: str):
-    # Create a new habit first
+def test_habit_logs_crud(client: TestClient, token: str):
+    # Create a new habit
     response = client.post(
         "/habits/",
         json={
@@ -101,3 +101,24 @@ def test_habit_logs_create_list(client: TestClient, token: str):
     assert logs[0]["note"] == updated_log_data["note"]
     assert logs[0]["value"] == updated_log_data["value"]
     assert logs[0]["performed_at"] == updated_log_data["performed_at"]
+
+    # Delete updated habit log
+    response = client.delete(
+        f"/habit-logs/{updated_log_data['id']}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 204
+
+    # List all habit logs after deletion
+    response = client.get(
+        f"/habits/{habit_id}/logs/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    logs = response.json()
+    assert response.status_code == 200
+    assert len(logs) == 1
+    assert logs[0]["id"] == log2_data["id"]
+    assert logs[0]["habit_id"] == log2_data["habit_id"]
+    assert logs[0]["note"] == log2_data["note"]
+    assert logs[0]["value"] == log2_data["value"]
+    assert logs[0]["performed_at"] == log2_data["performed_at"]
