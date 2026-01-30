@@ -239,3 +239,104 @@ def test_habit_stats(client: TestClient, token: str):
         stats_data["current_streak_days"]
         == "The provided date range does not include today or yesterday."
     )
+
+
+def test_habit_list(client: TestClient, token: str):
+    # Create two habits
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Read Books",
+            "description": "Read for 30 minutes",
+            "period": "daily",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    habit_data = response.json()
+    habit_id = habit_data["id"]
+
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Walk",
+            "description": "Walk for 1 hour",
+            "period": "daily",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    habit2_data = response.json()
+    habit2_id = habit2_data["id"]
+
+    # Create new habit logs
+    two_days_ago = datetime.now(UTC) - timedelta(days=2)
+    yesterday = datetime.now(UTC) - timedelta(days=1)
+    today = datetime.now(UTC)
+
+    client.post(
+        "/habit-logs/",
+        json={"habit_id": habit_id, "performed_at": two_days_ago.isoformat()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    client.post(
+        "/habit-logs/",
+        json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    client.post(
+        "/habit-logs/",
+        json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    client.post(
+        "/habit-logs/",
+        json={"habit_id": habit_id, "performed_at": today.isoformat()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    three_days_ago = datetime.now(UTC) - timedelta(days=3)
+    four_days_ago = datetime.now(UTC) - timedelta(days=4)
+
+    client.post(
+        "/habit-logs/",
+        json={"habit_id": habit2_id, "performed_at": three_days_ago.isoformat()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    client.post(
+        "/habit-logs/",
+        json={"habit_id": habit2_id, "performed_at": four_days_ago.isoformat()},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    # List all habits without stats
+    response = client.get(
+        "/habits/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    habits = response.json()
+    assert response.status_code == 200
+    habit_list = {habit["id"]: habit for habit in habits}
+    assert len(habit_list) == 2
+    assert habit_id in habit_list
+    assert habit2_id in habit_list
+    assert habit_list[habit_id]["stats"] is None
+    assert habit_list[habit2_id]["stats"] is None
+
+    # List all habits with stats
+    response = client.get(
+        "/habits/?include_stats=true",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    habits = response.json()
+    assert response.status_code == 200
+    habit_list = {habit["id"]: habit for habit in habits}
+    assert len(habit_list) == 2
+    assert habit_id in habit_list
+    assert habit2_id in habit_list
+    assert habit_list[habit_id]["stats"]["total_logs"] == 4
+    assert habit_list[habit_id]["stats"]["current_streak_days"] == 3
+    assert habit_list[habit2_id]["stats"]["total_logs"] == 2
+    assert habit_list[habit2_id]["stats"]["current_streak_days"] == 0
