@@ -121,3 +121,48 @@ def test_habit_logs_crud(client: TestClient, token: str):
     assert logs[0]["note"] == log2_data["note"]
     assert logs[0]["value"] == log2_data["value"]
     assert logs[0]["performed_at"] == log2_data["performed_at"]
+
+
+def test_habit_logs_crud_as_not_authenticated(client: TestClient, token: str):
+    # Create a new habit to have a valid habit_id
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Exercise",
+            "description": "Workout for 1 hour",
+            "period": "daily",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    habit_data = response.json()
+    habit_id = habit_data["id"]
+
+    # Create a new habit log without authentication
+    response = client.post(
+        "/habit-logs/",
+        json={"habit_id": habit_id},
+    )
+    assert response.status_code == 401
+
+    # Create a new habit log with authentication
+    response = client.post(
+        "/habit-logs/",
+        json={"habit_id": habit_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 201
+    log_data = response.json()
+    habit_log_id = log_data["id"]
+
+    # Update a habit log without authentication
+    response = client.put(
+        f"/habit-logs/{habit_log_id}",
+        json={"note": "Updated note"},
+    )
+    assert response.status_code == 401
+    assert response.detail == "Not authenticated"
+
+    # Delete a habit log without authentication
+    response = client.delete(f"/habit-logs/{habit_log_id}")
+    assert response.status_code == 401
+    assert response.detail == "Not authenticated"
