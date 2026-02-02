@@ -481,3 +481,158 @@ def test_habit_logs(
         assert logs[i]["note"] == habit_logs_responses[j]["note"]
         assert logs[i]["value"] == habit_logs_responses[j]["value"]
         assert logs[i]["performed_at"] == habit_logs_responses[j]["performed_at"]
+
+
+def test_habit_crud_as_not_authenticated(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
+    # Attempt to create a habit without authentication
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Exercise",
+            "description": "Workout for 1 hour",
+            "period": "daily",
+        },
+    )
+    assert response.status_code == 401
+
+    # Create a new habit with authentication
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Exercise",
+            "description": "Workout for 1 hour",
+            "period": "daily",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    habit_data = response.json()
+    habit_id = habit_data["id"]
+
+    # Attempt to list habits without authentication
+    response = client.get("/habits/")
+    assert response.status_code == 401
+
+    # Attempt to retrieve the created habit without authentication
+    response = client.get(f"/habits/{habit_id}")
+    assert response.status_code == 401
+
+    # Attempt to update the habit without authentication
+    response = client.put(
+        f"/habits/{habit_id}",
+        json={"name": "Exercise Updated", "description": "Updated description"},
+    )
+    assert response.status_code == 401
+
+    # Attempt to delete the habit without authentication
+    response = client.delete(f"/habits/{habit_id}")
+    assert response.status_code == 401
+
+    # List habits with authentication
+    response = client.get(
+        "/habits/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert len(response.json()) == 1
+    assert any(habit["id"] == habit_id for habit in response.json())
+
+    # Retrieve the created habit with authentication
+    response = client.get(
+        f"/habits/{habit_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == habit_id
+    assert data["name"] == "Exercise"
+    assert data["description"] == "Workout for 1 hour"
+    assert data["period"] == "daily"
+
+
+def test_not_existing_habit(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
+    non_existent_habit_id = 9999
+
+    # Retrieve a non-existing habit
+    response = client.get(
+        f"/habits/{non_existent_habit_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit not found"
+
+    # Update a non-existing habit
+    response = client.put(
+        f"/habits/{non_existent_habit_id}",
+        json={"name": "Non-existing Habit", "description": "Should not exist"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit not found"
+
+    # Delete a non-existing habit
+    response = client.delete(
+        f"/habits/{non_existent_habit_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit not found"
+
+
+def test_habit_access_by_different_user(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create two users and obtain tokens
+    user_1 = user_factory("alice@example.com")
+    token_1 = token_factory(user_1)
+    user_2 = user_factory("bob@example.com")
+    token_2 = token_factory(user_2)
+
+    # Create a new habit with the first user
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Meditate",
+            "description": "Meditate for 15 minutes",
+            "period": "daily",
+        },
+        headers={"Authorization": f"Bearer {token_1}"},
+    )
+    habit_data = response.json()
+    habit_id = habit_data["id"]
+
+    # Attempt to retrieve the habit with the second user
+    response = client.get(
+        f"/habits/{habit_id}",
+        headers={"Authorization": f"Bearer {token_2}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit not found"
+
+    # Attempt to update the habit with the second user
+    response = client.put(
+        f"/habits/{habit_id}",
+        json={"name": "Trying to update", "description": "Should not work"},
+        headers={"Authorization": f"Bearer {token_2}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit not found"
+
+    # Attempt to delete the habit with the second user
+    response = client.delete(
+        f"/habits/{habit_id}",
+        headers={"Authorization": f"Bearer {token_2}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit not found"
