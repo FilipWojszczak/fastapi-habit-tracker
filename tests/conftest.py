@@ -10,6 +10,8 @@ from fastapi_habit_tracker.main import app
 from fastapi_habit_tracker.models import Habit, HabitLog, User  # noqa: F401
 from fastapi_habit_tracker.utils.security import create_access_token, hash_password
 
+from .utils import TokenFactory, UserFactory
+
 
 @pytest.fixture(name="session")
 def session_fixture() -> Generator[Session]:
@@ -43,18 +45,22 @@ def client_fixture(session: Session) -> Generator[TestClient]:
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(name="user")
-def user_fixture(session: Session) -> User:
-    email = "john.smith@example.com"
-    password = "securepassword"
-    hashed_password = hash_password(password)
-    user = User(email=email, hashed_password=hashed_password)
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    return user
+@pytest.fixture(name="user_factory")
+def user_factory_fixture(session: Session) -> UserFactory:
+    def _create_user(email: str, password: str = "securepassword") -> User:
+        hashed_password = hash_password(password)
+        user = User(email=email, hashed_password=hashed_password)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+
+    return _create_user
 
 
-@pytest.fixture(name="token")
-def token_fixture(user: User) -> str:
-    return create_access_token(user.id)
+@pytest.fixture(name="token_factory")
+def token_factory_fixture() -> TokenFactory:
+    def _create_token(user: User) -> str:
+        return create_access_token(user.id)
+
+    return _create_token

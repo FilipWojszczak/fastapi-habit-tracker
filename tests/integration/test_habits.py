@@ -1,10 +1,17 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from tests.conftest import TokenFactory, UserFactory
 from tests.utils import dt_with_tzinfo_from_isoformat
 
 
-def test_habit_crud(client: TestClient, token: str):
+def test_habit_crud(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
     # Create a new habit
     response = client.post(
         "/habits/",
@@ -65,7 +72,13 @@ def test_habit_crud(client: TestClient, token: str):
     assert response.status_code == 204
 
 
-def test_habit_stats(client: TestClient, token: str):
+def test_habit_stats(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
     # Create a new habit
     response = client.post(
         "/habits/",
@@ -241,7 +254,13 @@ def test_habit_stats(client: TestClient, token: str):
     )
 
 
-def test_habit_list(client: TestClient, token: str):
+def test_habit_list(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
     # Create two habits
     response = client.post(
         "/habits/",

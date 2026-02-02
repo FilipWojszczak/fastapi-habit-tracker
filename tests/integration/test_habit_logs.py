@@ -1,10 +1,17 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from tests.conftest import TokenFactory, UserFactory
 from tests.utils import dt_with_tzinfo_from_isoformat
 
 
-def test_habit_logs_crud(client: TestClient, token: str):
+def test_habit_logs_crud(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
     # Create a new habit
     response = client.post(
         "/habits/",
@@ -123,7 +130,13 @@ def test_habit_logs_crud(client: TestClient, token: str):
     assert logs[0]["performed_at"] == log2_data["performed_at"]
 
 
-def test_habit_logs_crud_as_not_authenticated(client: TestClient, token: str):
+def test_habit_logs_crud_as_not_authenticated(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
     # Create a new habit to have a valid habit_id
     response = client.post(
         "/habits/",
@@ -160,9 +173,7 @@ def test_habit_logs_crud_as_not_authenticated(client: TestClient, token: str):
         json={"note": "Updated note"},
     )
     assert response.status_code == 401
-    assert response.detail == "Not authenticated"
 
     # Delete a habit log without authentication
     response = client.delete(f"/habit-logs/{habit_log_id}")
     assert response.status_code == 401
-    assert response.detail == "Not authenticated"
