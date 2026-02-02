@@ -359,3 +359,125 @@ def test_habit_list(
     assert habit_list[habit_id]["stats"]["current_streak_days"] == 3
     assert habit_list[habit2_id]["stats"]["total_logs"] == 2
     assert habit_list[habit2_id]["stats"]["current_streak_days"] == 0
+
+
+def test_habit_logs(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
+    # Create a new habit
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Read Books",
+            "description": "Read for 30 minutes",
+            "period": "daily",
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    habit_data = response.json()
+    habit_id = habit_data["id"]
+
+    # Create new habit logs
+    habit_logs_responses = []
+    today = datetime.now(UTC)
+
+    for offset in range(10):
+        log_date = today - timedelta(days=offset)
+
+        response = client.post(
+            "/habit-logs/",
+            json={
+                "habit_id": habit_id,
+                "performed_at": log_date.isoformat(),
+                "note": f"Note {offset}",
+                "value": offset * 10,
+            },
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == 201
+        habit_logs_responses.append(response.json())
+
+    # List all habit logs
+    response = client.get(
+        f"/habits/{habit_id}/logs/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    logs = response.json()
+    assert response.status_code == 200
+    assert len(logs) == 10
+    for i in range(10):
+        assert logs[i]["id"] == habit_logs_responses[i]["id"]
+        assert logs[i]["habit_id"] == habit_logs_responses[i]["habit_id"]
+        assert logs[i]["note"] == habit_logs_responses[i]["note"]
+        assert logs[i]["value"] == habit_logs_responses[i]["value"]
+        assert logs[i]["performed_at"] == habit_logs_responses[i]["performed_at"]
+
+    # List habit logs with 'since' filter
+    since = (today - timedelta(days=5)).date()
+    response = client.get(
+        f"/habits/{habit_id}/logs/?since={since}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    logs = response.json()
+    assert response.status_code == 200
+    assert len(logs) == 6
+    for i in range(6):
+        assert logs[i]["id"] == habit_logs_responses[i]["id"]
+        assert logs[i]["habit_id"] == habit_logs_responses[i]["habit_id"]
+        assert logs[i]["note"] == habit_logs_responses[i]["note"]
+        assert logs[i]["value"] == habit_logs_responses[i]["value"]
+        assert logs[i]["performed_at"] == habit_logs_responses[i]["performed_at"]
+
+    # List habit logs with 'to' filter
+    to = (today - timedelta(days=7)).date()
+    response = client.get(
+        f"/habits/{habit_id}/logs/?to={to}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    logs = response.json()
+    assert response.status_code == 200
+    assert len(logs) == 3
+    for i, j in zip(range(0, 3), range(7, 10), strict=False):
+        assert logs[i]["id"] == habit_logs_responses[j]["id"]
+        assert logs[i]["habit_id"] == habit_logs_responses[j]["habit_id"]
+        assert logs[i]["note"] == habit_logs_responses[j]["note"]
+        assert logs[i]["value"] == habit_logs_responses[j]["value"]
+        assert logs[i]["performed_at"] == habit_logs_responses[j]["performed_at"]
+
+    # List habit logs with 'limit' filter
+    limit = 4
+    response = client.get(
+        f"/habits/{habit_id}/logs/?limit={limit}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    logs = response.json()
+    assert response.status_code == 200
+    assert len(logs) == 4
+    for i in range(4):
+        assert logs[i]["id"] == habit_logs_responses[i]["id"]
+        assert logs[i]["habit_id"] == habit_logs_responses[i]["habit_id"]
+        assert logs[i]["note"] == habit_logs_responses[i]["note"]
+        assert logs[i]["value"] == habit_logs_responses[i]["value"]
+        assert logs[i]["performed_at"] == habit_logs_responses[i]["performed_at"]
+
+    # List habit logs with 'since', 'to' and 'limit' filters
+    since = (today - timedelta(days=8)).date()
+    to = (today - timedelta(days=2)).date()
+    limit = 3
+    response = client.get(
+        f"/habits/{habit_id}/logs/?limit={limit}&since={since}&to={to}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    logs = response.json()
+    assert response.status_code == 200
+    assert len(logs) == 3
+    for i, j in zip(range(0, 3), range(2, 5), strict=False):
+        assert logs[i]["id"] == habit_logs_responses[j]["id"]
+        assert logs[i]["habit_id"] == habit_logs_responses[j]["habit_id"]
+        assert logs[i]["note"] == habit_logs_responses[j]["note"]
+        assert logs[i]["value"] == habit_logs_responses[j]["value"]
+        assert logs[i]["performed_at"] == habit_logs_responses[j]["performed_at"]
