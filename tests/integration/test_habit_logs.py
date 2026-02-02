@@ -177,3 +177,99 @@ def test_habit_logs_crud_as_not_authenticated(
     # Delete a habit log without authentication
     response = client.delete(f"/habit-logs/{habit_log_id}")
     assert response.status_code == 401
+
+
+def test_create_habit_log_with_invalid_habit_id(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
+    invalid_habit_id = 9999
+
+    response = client.post(
+        "/habit-logs/",
+        json={"habit_id": invalid_habit_id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit not found"
+
+
+def test_not_existing_habit_log(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create a user and obtain a token
+    user = user_factory("alice@example.com")
+    token = token_factory(user)
+
+    non_existent_habit_log_id = 9999
+
+    # Attempt to update a non-existing habit log
+    response = client.put(
+        f"/habit-logs/{non_existent_habit_log_id}",
+        json={"note": "Updated note"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit log not found"
+
+    # Attempt to delete a non-existing habit log
+    response = client.delete(
+        f"/habit-logs/{non_existent_habit_log_id}",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit log not found"
+
+
+def test_habit_log_access_by_different_user(
+    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+):
+    # Create two users and obtain tokens
+    user_1 = user_factory("alice@example.com")
+    token_1 = token_factory(user_1)
+    user_2 = user_factory("bob@example.com")
+    token_2 = token_factory(user_2)
+
+    # Create a new habit with the first user
+    response = client.post(
+        "/habits/",
+        json={
+            "name": "Meditate",
+            "description": "Meditate for 15 minutes",
+            "period": "daily",
+        },
+        headers={"Authorization": f"Bearer {token_1}"},
+    )
+    habit_data = response.json()
+    habit_id = habit_data["id"]
+
+    # Create a new habit log with the first user
+    response = client.post(
+        "/habit-logs/",
+        json={"habit_id": habit_id},
+        headers={"Authorization": f"Bearer {token_1}"},
+    )
+    log_data = response.json()
+    habit_log_id = log_data["id"]
+
+    # Attempt to update the habit log created by the first user with the second user's
+    # token
+    response = client.put(
+        f"/habit-logs/{habit_log_id}",
+        json={"note": "Trying to update"},
+        headers={"Authorization": f"Bearer {token_2}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit log not found"
+
+    # Attempt to delete the habit log created by the first user with the second user's
+    # token
+    response = client.delete(
+        f"/habit-logs/{habit_log_id}",
+        headers={"Authorization": f"Bearer {token_2}"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Habit log not found"

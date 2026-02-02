@@ -3,14 +3,13 @@ from collections.abc import Generator
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
+from tests.utils import TokenFactory, UserFactory
 
 from fastapi_habit_tracker.config import get_settings
 from fastapi_habit_tracker.db import get_session
 from fastapi_habit_tracker.main import app
 from fastapi_habit_tracker.models import Habit, HabitLog, User  # noqa: F401
 from fastapi_habit_tracker.utils.security import create_access_token, hash_password
-
-from .utils import TokenFactory, UserFactory
 
 
 @pytest.fixture(name="session")
