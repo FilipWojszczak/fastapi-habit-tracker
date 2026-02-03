@@ -24,3 +24,20 @@ A comprehensive REST API for tracking habits, built with modern Python tools. Th
 * **Testing**: Pytest
 
 ## Project Structure
+
+```text
+.
+├── docker-compose.yml      # Docker services (App & DB)
+├── docker-compose.test.yml # Docker services for testing (isolated DB)
+├── pyproject.toml          # Dependencies and project metadata
+├── alembic/                # Database migrations
+├── fastapi_habit_tracker/  # Source code
+│   ├── main.py             # App entry point
+│   ├── models/             # Database models
+│   ├── routers/            # API endpoints (Auth, Habits, Logs)
+│   ├── schemas/            # Pydantic schemas (Request/Response)
+│   └── utils/              # Helper functions (Stats, Security)
+└── tests/                  # Test suite
+```
+
+## Getting Started
