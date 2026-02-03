@@ -87,3 +87,35 @@ Once the application is running, you can access the interactive API documentatio
 * **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
 ## Development
+
+If you want to run the project locally without Docker:
+
+1.  **Install dependencies**:
+    This project uses `uv` for fast dependency management.
+    ```bash
+    uv sync
+    ```
+
+2.  **Database Setup**:
+    Set up a local PostgreSQL database and update your `.env` file with the correct credentials.
+
+3.  **Run the server**:
+    ```bash
+    uv run uvicorn fastapi_habit_tracker.main:app --reload
+    ```
+
+## Testing
+
+This project uses a dedicated `docker-compose.test.yml` file to run tests in an isolated environment with a separate database.
+
+To run the test suite using Docker:
+
+```bash
+docker compose -f docker-compose.test.yml up --build --abort-on-container-exit
+```
+
+Or locally, with uv (requires local test DB setup):
+
+```bash
+uv run pytest
+```
