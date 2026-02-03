@@ -41,3 +41,49 @@ A comprehensive REST API for tracking habits, built with modern Python tools. Th
 ```
 
 ## Getting Started
+
+### Prerequisites
+
+* [Docker](https://www.docker.com/) and Docker Compose
+* (Optional) Python installed locally if running without Docker
+
+### Installation & Running (Docker)
+
+The easiest way to run the application is using Docker Compose.
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/FilipWojszczak/fastapi-habit-tracker.git
+    cd fastapi-habit-tracker
+    ```
+
+2.  **Environment Configuration:**
+    Create a `.env` file based on the example.
+    ```bash
+    cp .env.example .env
+    ```
+    *Note: Ensure correct values for variables in `.env`.*
+
+3.  **Build and Run:**
+    ```bash
+    docker-compose up --build
+    ```
+
+The API will be available at `http://localhost:8000`.
+
+### Database Migrations
+
+The application uses Alembic for database migrations. When running with Docker, migrations should be applied automatically. In case of some problems, run them manually:
+
+```bash
+docker-compose exec app alembic upgrade head
+```
+
+## API Documentation
+
+Once the application is running, you can access the interactive API documentation provided by FastAPI:
+
+* **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+* **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+## Development
