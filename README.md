@@ -66,7 +66,7 @@ The easiest way to run the application is using Docker Compose.
 
 3.  **Build and Run:**
     ```bash
-    docker-compose up --build
+    docker compose up --build
     ```
 
 The API will be available at `http://localhost:8000`.
@@ -76,7 +76,7 @@ The API will be available at `http://localhost:8000`.
 The application uses Alembic for database migrations. When running with Docker, migrations should be applied automatically. In case of some problems, run them manually:
 
 ```bash
-docker-compose exec app alembic upgrade head
+docker compose exec app uv run alembic upgrade head
 ```
 
 ## API Documentation
