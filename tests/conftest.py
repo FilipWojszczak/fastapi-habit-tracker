@@ -1,16 +1,19 @@
+from collections.abc import Generator
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
+from tests.utils import TokenFactory, UserFactory
 
 from fastapi_habit_tracker.config import get_settings
 from fastapi_habit_tracker.db import get_session
 from fastapi_habit_tracker.main import app
 from fastapi_habit_tracker.models import Habit, HabitLog, User  # noqa: F401
-from fastapi_habit_tracker.utils.security import hash_password
+from fastapi_habit_tracker.utils.security import create_access_token, hash_password
 
 
 @pytest.fixture(name="session")
-def session_fixture():
+def session_fixture() -> Generator[Session]:
     database_url = get_settings().database_url
     if "postgres" in database_url:
         engine = create_engine(database_url)
@@ -31,7 +34,7 @@ def session_fixture():
 
 
 @pytest.fixture(name="client")
-def client_fixture(session: Session):
+def client_fixture(session: Session) -> Generator[TestClient]:
     def get_session_override():
         return session
 
@@ -41,13 +44,22 @@ def client_fixture(session: Session):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(name="user")
-def user_fixture(session: Session):
-    email = "john.smith@example.com"
-    password = "securepassword"
-    hashed_password = hash_password(password)
-    user = User(email=email, hashed_password=hashed_password)
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    return user
+@pytest.fixture(name="user_factory")
+def user_factory_fixture(session: Session) -> UserFactory:
+    def _create_user(email: str, password: str = "securepassword") -> User:
+        hashed_password = hash_password(password)
+        user = User(email=email, hashed_password=hashed_password)
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+
+    return _create_user
+
+
+@pytest.fixture(name="token_factory")
+def token_factory_fixture() -> TokenFactory:
+    def _create_token(user: User) -> str:
+        return create_access_token(user.id)
+
+    return _create_token
