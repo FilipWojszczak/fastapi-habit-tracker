@@ -1,5 +1,10 @@
 # FastAPI Habit Tracker
 
+![CI Status](https://github.com/FilipWojszczak/fastapi-habit-tracker/actions/workflows/fastapi-habit-tracker-ci.yml/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Python Version](https://img.shields.io/badge/python-3.14-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)
+
 A comprehensive REST API for tracking habits, built with modern Python tools. This application allows users to create habits, log their progress, and view statistics such as current and longest streaks.
 
 ## Features
@@ -15,7 +20,7 @@ A comprehensive REST API for tracking habits, built with modern Python tools. Th
 
 ## Tech Stack
 
-* **Language**: Python 3.14+
+* **Language**: Python 3.14
 * **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 * **Database**: PostgreSQL 17
 * **ORM**: SQLModel / SQLAlchemy
