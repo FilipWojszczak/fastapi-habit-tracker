@@ -33,6 +33,7 @@ A comprehensive REST API for tracking habits, built with modern Python tools. Th
 ├── alembic/                # Database migrations
 ├── fastapi_habit_tracker/  # Source code
 │   ├── main.py             # App entry point
+│   ├── dependencies/       # Reusable dependencies (e.g. Auth)
 │   ├── models/             # Database models
 │   ├── routers/            # API endpoints (Auth, Habits, Logs)
 │   ├── schemas/            # Pydantic schemas (Request/Response)
