@@ -17,6 +17,8 @@ class Settings(BaseSettings):
 
     _database_url: str | None = None
 
+    ollama_base_url: str
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @computed_field
