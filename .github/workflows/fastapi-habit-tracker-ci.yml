@@ -31,6 +31,7 @@ jobs:
       POSTGRES_DB: test_db
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
+      OLLAMA_BASE_URL: http://mock-ollama-test
 
     steps:
     - name: Checkout code
