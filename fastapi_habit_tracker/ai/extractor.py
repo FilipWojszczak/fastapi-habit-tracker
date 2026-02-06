@@ -1,3 +1,5 @@
+import textwrap
+
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
@@ -26,40 +28,36 @@ llm = ChatOllama(model="llama3", temperature=0, base_url=settings.ollama_base_ur
 
 parser = PydanticOutputParser(pydantic_object=HabitLogData)
 
-SYSTEM_PROMPT = (
-    "You are an assistant that maps user text to a STRICTLY DEFINED list of habits.\n"
-    "Rules:\n"
-    "1. Your priority is to select exactly one name from the provided "
-    '"Available habits" list.\n'
-    "2. NEVER return a name that is not on the list.\n"
-    "3. If the activity does not match perfectly, choose the habit from the list that "
-    'is semantically closest (e.g., if the user writes "ran" and "Workout" is on the '
-    'list, select "Workout"; if "crawl" and "Pool" is on the list, select "Pool").\n'
-)
+SYSTEM_PROMPT = textwrap.dedent("""
+    You are an assistant that maps user text to a STRICTLY DEFINED list of habits.
+    Rules:
+    1. You must select exactly one name from the provided list.
+    2. If the activity does not match perfectly, choose the semantically closest option from the list (e.g., "ran" -> "Workout", "crawl" -> "Pool").
+    3. Output strictly valid JSON.
+""")  # noqa: E501
 
-USER_PROMPT = (
-    "Analyze the following user text and match it to one of the available habits.\n\n"
-    "Available habits (CHOOSE ONLY FROM THIS LIST):\n"
-    "[{habits_list}]\n\n"
-    "User text:\n"
-    '"{user_input}"\n\n'
-    'Return JSON. Remember: the "habit_name" field MUST contain a string identical to '
-    "one of the elements in the habit list above. Do not invent new names.\n"
-    "{format_instructions}\n"
-)
+USER_PROMPT = textwrap.dedent("""
+    Available habits:
+    [{habits_list}]
+
+    User text:
+    "{user_input}"
+
+    Analyze the text and return the corresponding JSON object.
+    Reminder: The "habit_name" must be an exact string match from the list above.
+    {format_instructions}
+""")
 
 prompt_template = ChatPromptTemplate.from_messages(
     [
         ("system", SYSTEM_PROMPT.strip()),
         (
             "human",
-            "I swam 800m crawl today, I'm exhausted. Available habits: [Running, "
-            "Swimming, Reading]",
+            "I swam 800m crawl today, I'm exhausted. Available habits: [Running, Swimming, Reading]",  # noqa: E501
         ),
         (
             "ai",
-            '{{"habit_name": "Swimming", "value": 800, "note": "Freestyle (crawl), '
-            'exhaustion"}}',
+            '{{"habit_name": "Swimming", "value": 800, "note": "Freestyle (crawl), exhaustion"}}',  # noqa: E501
         ),
         ("human", "I drank a glass of water. Available habits: [Drink Water, Walk]"),
         ("ai", '{{"habit_name": "Drink Water", "value": 1, "note": "Glass of water"}}'),
@@ -71,9 +69,6 @@ habit_extraction_chain = prompt_template | llm | parser
 
 
 def extract_habit_data(user_input: str, available_habits: list[str]) -> HabitLogData:
-    """
-    Synchronous function to invoke the chain.
-    """
     response = habit_extraction_chain.invoke(
         {
             "user_input": user_input,
