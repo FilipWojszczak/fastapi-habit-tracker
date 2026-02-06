@@ -13,19 +13,22 @@ from ..schemas.habit_log import HabitLogRead
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
-@router.post("/log", response_model=HabitLogRead, summary="Create a habit log via AI")
+@router.post(
+    "/log",
+    response_model=HabitLogRead,
+    summary="Create a habit log via AI",
+    description=(
+        "Analyzes natural language text to log a habit.\n\n"
+        "1. Fetches user's available habits.  \n"
+        "2. Uses LLM to match text to a habit and extract details.  \n"
+        "3. Saves the new log to the database.  \n"
+    ),
+)
 def log_habit_with_ai(
     request: AILogRequest,
     user: Annotated[User, Depends(get_current_user)],
     session: Annotated[Session, Depends(get_session)],
 ):
-    """
-    Analyzes natural language text to log a habit.
-    1. Fetches user's available habits.
-    2. Uses LLM to match text to a habit and extract details.
-    3. Saves the new log to the database.
-    """
-
     statement = select(Habit).where(Habit.user_id == user.id)
     habits = session.exec(statement).all()
 
