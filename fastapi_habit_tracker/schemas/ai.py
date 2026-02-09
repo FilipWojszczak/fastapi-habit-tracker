@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pydantic import BaseModel, Field
 
 
@@ -16,5 +18,24 @@ class HabitLogData(BaseModel):
     )
 
 
-class AILogRequest(BaseModel):
-    text: str
+class ExtractionStatus(str, Enum):
+    MATCH = "match"
+    AMBIGUOUS = "ambiguous"
+    NO_MATCH = "no_match"
+
+
+class AgentDecision(BaseModel):
+    status: ExtractionStatus
+    habit_data: HabitLogData | None = Field(
+        default=None, description="Populated ONLY if status is 'match'"
+    )
+    reasoning: str | None = Field(
+        default=None, description="Reason for ambiguity or no match (internal thought)."
+    )
+
+
+class AIResponse(BaseModel):
+    status: str
+    message: str | None = None
+    log: HabitLogData | None = None
+    thread_id: str | None = None
