@@ -3,25 +3,9 @@ import textwrap
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
-from pydantic import BaseModel, Field
 
 from ..config import get_settings
-
-
-class HabitLogData(BaseModel):
-    habit_name: str = Field(
-        description="The exact name of the habit from the provided list."
-    )
-    value: int | None = Field(
-        description=(
-            "The numerical value associated with the activity (e.g., minutes, pages, "
-            "liters). 0 if not specified."
-        )
-    )
-    note: str | None = Field(
-        description="A short note or summary of the activity extracted from the text."
-    )
-
+from ..schemas.ai import HabitLogData
 
 settings = get_settings()
 llm = ChatOllama(model="llama3", temperature=0, base_url=settings.ollama_base_url)
