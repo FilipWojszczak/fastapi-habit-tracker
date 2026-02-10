@@ -29,8 +29,11 @@ class AgentDecision(BaseModel):
     habit_data: HabitLogData | None = Field(
         default=None, description="Populated ONLY if status is 'match'"
     )
-    reasoning: str | None = Field(
-        default=None, description="Reason for ambiguity or no match (internal thought)."
+    reasoning: str = Field(
+        description=(
+            "Brief justification for the decision. MUST be provided for ALL statuses "
+            "(match, ambiguous, no_match)."
+        )
     )
 
 
