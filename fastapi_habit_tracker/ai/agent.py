@@ -3,7 +3,7 @@ from typing import Literal, TypedDict
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, StateGraph
 
 from ..config import get_settings
@@ -135,9 +135,8 @@ workflow.add_conditional_edges(
 workflow.add_edge("question_generator", "human_input")
 workflow.add_edge("human_input", "extractor")
 
-# Replace with PostgresSaver (async)
-checkpointer = MemorySaver()
 
-habit_graph = workflow.compile(
-    checkpointer=checkpointer, interrupt_before=["human_input"]
-)
+def get_compiled_graph(conn):
+    checkpointer = PostgresSaver(conn)
+
+    return workflow.compile(checkpointer=checkpointer, interrupt_before=["human_input"])
