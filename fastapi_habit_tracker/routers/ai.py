@@ -4,8 +4,8 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlmodel import Session, select
 
-from ..ai.agent import habit_graph
-from ..db import get_session
+from ..ai.agent import get_compiled_graph
+from ..db import get_langgraph_pool, get_session
 from ..dependencies.auth import get_current_user
 from ..models import Habit, HabitLog, User
 from ..schemas.ai import AIResponse, ExtractionStatus
@@ -28,35 +28,39 @@ def chat_with_habit_agent(
         )
     habit_names = [h.name for h in habits]
 
-    if not thread_id:
-        thread_id = str(uuid.uuid4())
-        initial_state = {
-            "user_input": text,
-            "chat_history": [],
-            "available_habits": habit_names,
-            "attempt_count": 0,
-        }
-        config = {"configurable": {"thread_id": thread_id}}
-        result = habit_graph.invoke(initial_state, config=config)
-    else:
-        config = {"configurable": {"thread_id": thread_id}}
+    pool = get_langgraph_pool()
 
-        current_state_snapshot = habit_graph.get_state(config)
-        if not current_state_snapshot.next:
-            raise HTTPException(status_code=400, detail="Thread closed or expired.")
+    with pool.connection() as conn:
+        habit_graph = get_compiled_graph(conn)
 
-        habit_graph.update_state(
-            config,
-            {"user_input": text},
-            as_node="human_input",
-        )
+        if not thread_id:
+            thread_id = str(uuid.uuid4())
+            initial_state = {
+                "user_input": text,
+                "chat_history": [],
+                "available_habits": habit_names,
+                "attempt_count": 0,
+            }
+            config = {"configurable": {"thread_id": thread_id}}
+            result = habit_graph.invoke(initial_state, config=config)
+        else:
+            config = {"configurable": {"thread_id": thread_id}}
 
-        result = habit_graph.invoke(None, config=config)
+            current_state_snapshot = habit_graph.get_state(config)
+            if not current_state_snapshot.next:
+                raise HTTPException(status_code=400, detail="Thread closed or expired.")
+
+            habit_graph.update_state(
+                config,
+                {"user_input": text},
+                as_node="human_input",
+            )
+
+            result = habit_graph.invoke(None, config=config)
 
     final_decision = result.get("decision")
 
-    snapshot = habit_graph.get_state(config)
-    if snapshot.next and "human_input" in snapshot.next:
+    if final_decision.status == ExtractionStatus.AMBIGUOUS:
         return AIResponse(
             status="question",
             message=result.get("question", "Could you clarify?"),
