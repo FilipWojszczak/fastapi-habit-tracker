@@ -35,10 +35,3 @@ class LoggingAgentDecision(BaseModel):
             "(match, ambiguous, no_match)."
         )
     )
-
-
-class LoggingAgentResponse(BaseModel):
-    status: str
-    message: str | None = None
-    log: HabitLogData | None = None
-    thread_id: str | None = None

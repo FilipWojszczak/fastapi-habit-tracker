@@ -5,10 +5,11 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlmodel import Session, select
 
 from ..ai.logging_agent import get_compiled_graph
-from ..ai.schemas import ExtractionStatus, LoggingAgentResponse
+from ..ai.schemas import ExtractionStatus
 from ..db import get_langgraph_pool, get_session
 from ..dependencies.auth import get_current_user
 from ..models import Habit, HabitLog, User
+from ..schemas.ai import LoggingAgentResponse
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 

@@ -3,11 +3,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from tests.conftest import TokenFactory, UserFactory
 
-from fastapi_habit_tracker.ai.schemas import (
-    HabitLogData,
-    LoggingAgentDecision,
-    LoggingAgentResponse,
-)
+from fastapi_habit_tracker.ai.schemas import HabitLogData, LoggingAgentDecision
+from fastapi_habit_tracker.schemas.ai import LoggingAgentResponse
 
 
 def test_log_habit_with_ai_mocked(
