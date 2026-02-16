@@ -1,5 +1,5 @@
 import textwrap
-from typing import Literal, TypedDict
+from typing import Literal
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
@@ -7,22 +7,12 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, StateGraph
 
 from ..config import get_settings
-from .schemas import ExtractionStatus, LoggingAgentDecision
+from .schemas import ExtractionStatus, LoggingAgentDecision, LoggingAgentState
 
 settings = get_settings()
 llm = ChatOllama(model="llama3", temperature=0, base_url=settings.ollama_base_url)
 
 structured_llm = llm.with_structured_output(LoggingAgentDecision)
-
-
-class LoggingAgentState(TypedDict):
-    user_input: str
-    chat_history: list[str]
-    available_habits: list[str]
-    decision: LoggingAgentDecision | None
-    question: str | None
-    attempt_count: int
-
 
 EXTRACTOR_SYSTEM = textwrap.dedent("""
     You are a strict data extraction assistant.

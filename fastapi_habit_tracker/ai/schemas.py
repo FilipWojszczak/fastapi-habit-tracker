@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -35,3 +36,12 @@ class LoggingAgentDecision(BaseModel):
             "(match, ambiguous, no_match)."
         )
     )
+
+
+class LoggingAgentState(TypedDict):
+    user_input: str
+    chat_history: list[str]
+    available_habits: list[str]
+    decision: LoggingAgentDecision | None
+    question: str | None
+    attempt_count: int
