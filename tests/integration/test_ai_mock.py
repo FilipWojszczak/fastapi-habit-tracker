@@ -3,7 +3,11 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from tests.conftest import TokenFactory, UserFactory
 
-from fastapi_habit_tracker.schemas.ai import AgentDecision, AIResponse, HabitLogData
+from fastapi_habit_tracker.ai.schemas import (
+    HabitLogData,
+    LoggingAgentDecision,
+    LoggingAgentResponse,
+)
 
 
 def test_log_habit_with_ai_mocked(
@@ -41,14 +45,14 @@ def test_log_habit_with_ai_mocked(
         value=30,
         note="Training from mock",
     )
-    fake_ai_response = AIResponse(
+    fake_ai_response = LoggingAgentResponse(
         status="success", message=f"Logged: {habit_log.habit_name}", log=habit_log
     )
 
     # Make a patch on the function that calls the AI, so that instead of calling the
     # real AI, it returns our fake response
     mock_result = {
-        "decision": AgentDecision(
+        "decision": LoggingAgentDecision(
             status="match",
             habit_data=habit_log,
             reasoning="The user mentioned 'ran', which is unique synonym for the "
@@ -60,7 +64,7 @@ def test_log_habit_with_ai_mocked(
 
         # Call the endpoint
         response = client.post(
-            "/ai/chat/",
+            "/ai/chat-logging-agent/",
             json={"text": "I ran for 30 minutes."},
             headers={"Authorization": f"Bearer {token}"},
         )

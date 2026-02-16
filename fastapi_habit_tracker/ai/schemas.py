@@ -24,7 +24,7 @@ class ExtractionStatus(str, Enum):
     NO_MATCH = "no_match"
 
 
-class AgentDecision(BaseModel):
+class LoggingAgentDecision(BaseModel):
     status: ExtractionStatus
     habit_data: HabitLogData | None = Field(
         default=None, description="Populated ONLY if status is 'match'"
@@ -37,7 +37,7 @@ class AgentDecision(BaseModel):
     )
 
 
-class AIResponse(BaseModel):
+class LoggingAgentResponse(BaseModel):
     status: str
     message: str | None = None
     log: HabitLogData | None = None

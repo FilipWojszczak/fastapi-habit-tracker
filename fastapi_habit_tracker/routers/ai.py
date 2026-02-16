@@ -4,17 +4,17 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlmodel import Session, select
 
-from ..ai.agent import get_compiled_graph
+from ..ai.logging_agent import get_compiled_graph
+from ..ai.schemas import ExtractionStatus, LoggingAgentResponse
 from ..db import get_langgraph_pool, get_session
 from ..dependencies.auth import get_current_user
 from ..models import Habit, HabitLog, User
-from ..schemas.ai import AIResponse, ExtractionStatus
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
-@router.post("/chat", response_model=AIResponse)
-def chat_with_habit_agent(
+@router.post("/chat-logging-agent", response_model=LoggingAgentResponse)
+def chat_with_logging_agent(
     text: Annotated[str, Body(embed=True)],
     session: Annotated[Session, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
@@ -61,14 +61,14 @@ def chat_with_habit_agent(
     final_decision = result.get("decision")
 
     if final_decision.status == ExtractionStatus.AMBIGUOUS:
-        return AIResponse(
+        return LoggingAgentResponse(
             status="question",
             message=result.get("question", "Could you clarify?"),
             thread_id=thread_id,
         )
 
     if not final_decision or final_decision.status == ExtractionStatus.NO_MATCH:
-        return AIResponse(
+        return LoggingAgentResponse(
             status="error",
             message="I couldn't match this to any of your habits.",
             thread_id=None,
@@ -79,7 +79,7 @@ def chat_with_habit_agent(
 
         matched_habit = next((h for h in habits if h.name == data.habit_name), None)
         if not matched_habit:
-            return AIResponse(
+            return LoggingAgentResponse(
                 status="error", message=f"Habit {data.habit_name} not found in DB."
             )
 
@@ -88,11 +88,11 @@ def chat_with_habit_agent(
         session.commit()
         session.refresh(new_log)
 
-        return AIResponse(
+        return LoggingAgentResponse(
             status="success",
             log=data,
             message=f"Logged: {data.habit_name}",
             thread_id=None,
         )
 
-    return AIResponse(status="error", message="Unknown AI error.")
+    return LoggingAgentResponse(status="error", message="Unknown AI error.")

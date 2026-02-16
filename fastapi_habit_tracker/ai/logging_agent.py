@@ -7,19 +7,19 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.graph import END, StateGraph
 
 from ..config import get_settings
-from ..schemas.ai import AgentDecision, ExtractionStatus
+from .schemas import ExtractionStatus, LoggingAgentDecision
 
 settings = get_settings()
 llm = ChatOllama(model="llama3", temperature=0, base_url=settings.ollama_base_url)
 
-structured_llm = llm.with_structured_output(AgentDecision)
+structured_llm = llm.with_structured_output(LoggingAgentDecision)
 
 
-class AgentState(TypedDict):
+class LoggingAgentState(TypedDict):
     user_input: str
     chat_history: list[str]
     available_habits: list[str]
-    decision: AgentDecision | None
+    decision: LoggingAgentDecision | None
     question: str | None
     attempt_count: int
 
@@ -59,7 +59,7 @@ QUESTION_SYSTEM = textwrap.dedent("""
 """)
 
 
-def extractor_node(state: AgentState):
+def extractor_node(state: LoggingAgentState):
     habits_str = ", ".join(state["available_habits"])
 
     full_context = "\n".join(state.get("chat_history", []))
@@ -73,7 +73,7 @@ def extractor_node(state: AgentState):
     )
 
     chain = prompt | structured_llm
-    result: AgentDecision = chain.invoke({"habits_list": habits_str})
+    result: LoggingAgentDecision = chain.invoke({"habits_list": habits_str})
 
     return {
         "decision": result,
@@ -81,7 +81,7 @@ def extractor_node(state: AgentState):
     }
 
 
-def question_generator_node(state: AgentState):
+def question_generator_node(state: LoggingAgentState):
     habits_str = ", ".join(state["available_habits"])
     reason = state["decision"].reasoning or "Unclear input"
 
@@ -97,11 +97,13 @@ def question_generator_node(state: AgentState):
     }
 
 
-def human_input_node(state: AgentState):
+def human_input_node(state: LoggingAgentState):
     return {"attempt_count": state["attempt_count"] + 1}
 
 
-def check_confidence(state: AgentState) -> Literal["success", "question", "fail"]:
+def check_confidence(
+    state: LoggingAgentState,
+) -> Literal["success", "question", "fail"]:
     decision = state["decision"]
     attempts = state["attempt_count"]
 
@@ -118,7 +120,7 @@ def check_confidence(state: AgentState) -> Literal["success", "question", "fail"
         return "fail"
 
 
-workflow = StateGraph(AgentState)
+workflow = StateGraph(LoggingAgentState)
 
 workflow.add_node("extractor", extractor_node)
 workflow.add_node("question_generator", question_generator_node)
