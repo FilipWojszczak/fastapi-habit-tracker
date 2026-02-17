@@ -3,7 +3,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 from tests.conftest import TokenFactory, UserFactory
 
-from fastapi_habit_tracker.ai.extractor import HabitLogData
+from fastapi_habit_tracker.ai.schemas import HabitLogData, LoggingAgentDecision
+from fastapi_habit_tracker.schemas.ai import LoggingAgentResponse
 
 
 def test_log_habit_with_ai_mocked(
@@ -36,32 +37,48 @@ def test_log_habit_with_ai_mocked(
     )
 
     # Prepare fake response from AI
-    fake_ai_response = HabitLogData(
+    habit_log = HabitLogData(
         habit_name="Running",
         value=30,
         note="Training from mock",
     )
+    fake_ai_response = LoggingAgentResponse(
+        status="success", message=f"Logged: {habit_log.habit_name}", log=habit_log
+    )
 
     # Make a patch on the function that calls the AI, so that instead of calling the
     # real AI, it returns our fake response
-    with patch("fastapi_habit_tracker.routers.ai.extract_habit_data") as mock_ai:
-        mock_ai.return_value = fake_ai_response
+    mock_result = {
+        "decision": LoggingAgentDecision(
+            status="match",
+            habit_data=habit_log,
+            reasoning="The user mentioned 'ran', which is unique synonym for the "
+            "habit.",
+        )
+    }
+    with (
+        patch("fastapi_habit_tracker.routers.ai.get_langgraph_pool"),
+        patch("fastapi_habit_tracker.routers.ai.get_compiled_graph") as mock_get_graph,
+    ):
+        mock_get_graph.return_value.invoke.return_value = mock_result
 
         # Call the endpoint
         response = client.post(
-            "/ai/log/",
+            "/ai/chat-logging-agent/",
             json={"text": "I ran for 30 minutes."},
             headers={"Authorization": f"Bearer {token}"},
         )
 
     assert response.status_code == 200
     data = response.json()
-    assert data["habit_id"] == habit_id
-    assert data["value"] == 30
-    assert data["note"] == "Training from mock"
+    assert data["status"] == fake_ai_response.status
+    assert data["message"] == fake_ai_response.message
+    assert data["log"]["habit_name"] == habit_log.habit_name
+    assert data["log"]["value"] == habit_log.value
+    assert data["log"]["note"] == habit_log.note
 
     # Ensure that our mock was called exactly once
-    mock_ai.assert_called_once()
+    mock_get_graph.return_value.invoke.assert_called_once()
 
     # Check that the log was added to db and associated with the correct habit
     response = client.get(

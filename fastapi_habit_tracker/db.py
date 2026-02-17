@@ -1,3 +1,4 @@
+from psycopg_pool import ConnectionPool
 from sqlmodel import Session, create_engine
 
 from . import models  # noqa: F401
@@ -13,7 +14,36 @@ engine = create_engine(
     else {},
 )
 
+_langgraph_pool: ConnectionPool | None = None
+
 
 def get_session():
     with Session(engine) as session:
         yield session
+
+
+def init_langgraph_pool() -> ConnectionPool:
+    global _langgraph_pool
+
+    db_url = database_url.replace("postgresql+psycopg://", "postgresql://")
+
+    _langgraph_pool = ConnectionPool(
+        conninfo=db_url,
+        max_size=20,
+        kwargs={"autocommit": True},
+    )
+    _langgraph_pool.open()
+    return _langgraph_pool
+
+
+def close_langgraph_pool():
+    global _langgraph_pool
+    if _langgraph_pool:
+        _langgraph_pool.close()
+        _langgraph_pool = None
+
+
+def get_langgraph_pool() -> ConnectionPool:
+    if _langgraph_pool is None:
+        raise RuntimeError("LangGraph pool is not initialized. Check lifespan.")
+    return _langgraph_pool
