@@ -14,7 +14,18 @@ from ..schemas.ai import LoggingAgentResponse
 router = APIRouter(prefix="/ai", tags=["AI"])
 
 
-@router.post("/chat-logging-agent", response_model=LoggingAgentResponse)
+@router.post(
+    "/chat-logging-agent",
+    response_model=LoggingAgentResponse,
+    summary="Create habit log with AI",
+    description=(
+        "Analyzes natural language text to log a habit.\n\n"
+        "1. Fetches user's available habits.  \n"
+        "2. Uses LLM to match text to a habit (asks if text is ambiguous) and extract "
+        "details.  \n"
+        "3. Saves the new log to the database.  \n"
+    ),
+)
 def chat_with_logging_agent(
     text: Annotated[str, Body(embed=True)],
     session: Annotated[Session, Depends(get_session)],
