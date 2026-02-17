@@ -56,8 +56,11 @@ def test_log_habit_with_ai_mocked(
             "habit.",
         )
     }
-    with patch("fastapi_habit_tracker.routers.ai.habit_graph.invoke") as mock_ai:
-        mock_ai.return_value = mock_result
+    with (
+        patch("fastapi_habit_tracker.routers.ai.get_langgraph_pool"),
+        patch("fastapi_habit_tracker.routers.ai.get_compiled_graph") as mock_get_graph,
+    ):
+        mock_get_graph.return_value.invoke.return_value = mock_result
 
         # Call the endpoint
         response = client.post(
@@ -75,7 +78,7 @@ def test_log_habit_with_ai_mocked(
     assert data["log"]["note"] == habit_log.note
 
     # Ensure that our mock was called exactly once
-    mock_ai.assert_called_once()
+    mock_get_graph.return_value.invoke.assert_called_once()
 
     # Check that the log was added to db and associated with the correct habit
     response = client.get(
