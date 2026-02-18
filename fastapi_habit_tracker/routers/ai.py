@@ -46,7 +46,7 @@ def chat_with_logging_agent(
         habit_graph = get_compiled_graph(conn)
 
         if not thread_id:
-            thread_id = str(uuid.uuid4())
+            thread_id = f"log-{uuid.uuid4()}"
             initial_state = {
                 "user_input": text,
                 "chat_history": [],
