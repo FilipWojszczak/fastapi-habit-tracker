@@ -32,6 +32,7 @@ jobs:
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
       OLLAMA_BASE_URL: http://mock-ollama-test
+      GOOGLE_API_KEY: change-me
       LANGCHAIN_TRACING: true
       LANGCHAIN_ENDPOINT: https://eu.api.smith.langchain.com
       LANGCHAIN_API_KEY: change-me
