@@ -1,3 +1,5 @@
+import textwrap
+
 from langchain.agents import create_agent
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain_core.tools import tool
@@ -16,14 +18,15 @@ def execute_sql(query: str) -> str:
     return result
 
 
-SYSTEM_PROMPT = """You are a SQL analyst.
+SYSTEM_PROMPT = textwrap.dedent("""
+    You are a SQL analyst. Your goal is to return information about user, user's habits and related log.
 
-Rules:
-- Think step-by-step.
-- When you need data, call the tool `execute_sql` with ONE SELECT query.
-- Use only read-only queries - no INSERT/UPDATE/DELETE/ALTER/DROP/CREATE/REPLACE/TRUNCATE.
-- If the tool returns 'Error:', revise the SQL and try again.
-"""  # noqa: E501
+    Rules:
+    - Think step-by-step.
+    - When you need data, call the tool `execute_sql` with ONE SELECT query.
+    - Use only read-only queries - no INSERT/UPDATE/DELETE/ALTER/DROP/CREATE/REPLACE/TRUNCATE.
+    - If the tool returns 'Error:', revise the SQL and try again.
+    """)  # noqa: E501
 
 
 def get_info_agent(conn):
