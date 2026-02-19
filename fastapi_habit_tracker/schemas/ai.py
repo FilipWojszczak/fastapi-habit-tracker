@@ -8,3 +8,8 @@ class LoggingAgentResponse(BaseModel):
     message: str | None = None
     log: HabitLogData | None = None
     thread_id: str | None = None
+
+
+class InfoAgentResponse(BaseModel):
+    message: str | None = None
+    thread_id: str | None = None
