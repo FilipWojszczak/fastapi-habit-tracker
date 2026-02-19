@@ -29,11 +29,15 @@ SYSTEM_PROMPT = textwrap.dedent("""
     """)  # noqa: E501
 
 
-def get_info_agent(conn):
+def get_info_agent(conn, user_id: int):
+    dynamic_prompt = (
+        SYSTEM_PROMPT
+        + f"\n- ALWAYS filter all your SQL queries using WHERE user_id = {user_id}."
+    )
     return create_agent(
         model="google_genai:gemini-3-flash-preview",
         tools=[execute_sql],
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=dynamic_prompt,
         checkpointer=PostgresSaver(conn),
         middleware=[
             HumanInTheLoopMiddleware(

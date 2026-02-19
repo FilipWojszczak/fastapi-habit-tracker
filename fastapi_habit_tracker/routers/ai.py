@@ -131,10 +131,10 @@ def chat_with_info_agent(
     pool = get_langgraph_pool()
 
     with pool.connection() as conn:
-        info_agent = get_info_agent(conn)
+        info_agent = get_info_agent(conn, user.id)
         if not thread_id:
             thread_id = f"info-{uuid.uuid4()}"
-            initial_state = {"user_input": text, "chat_history": []}
+            initial_state = {"messages": [("user", text)]}
             config = {"configurable": {"thread_id": thread_id}}
             result = info_agent.invoke(initial_state, config=config)
         else:
@@ -144,7 +144,7 @@ def chat_with_info_agent(
             if not current_state_snapshot.next:
                 raise HTTPException(status_code=400, detail="Thread closed or expired.")
 
-            info_agent.update_state(config, {"user_input": text})
+            info_agent.update_state(config, {"messages": [("user", text)]})
 
             result = info_agent.invoke(None, config=config)
 
