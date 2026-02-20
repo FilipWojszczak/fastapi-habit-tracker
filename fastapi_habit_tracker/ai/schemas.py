@@ -1,6 +1,8 @@
+import operator
 from enum import Enum
-from typing import TypedDict
+from typing import Annotated, Literal, TypedDict
 
+from langchain.messages import AnyMessage
 from pydantic import BaseModel, Field
 
 
@@ -45,3 +47,21 @@ class LoggingAgentState(TypedDict):
     decision: LoggingAgentDecision | None
     question: str | None
     attempt_count: int
+
+
+class UserDecision(BaseModel):
+    decision: Literal["approve", "reject"] = Field(
+        description=(
+            "User's decision regarding the proposed SQL query. MUST be one of: "
+            "'approve' if the user accepted the proposed SQL query, 'reject' if the "
+            "user rejected the proposed SQL query or if the response is ambiguous or "
+            "incomprehensible."
+        )
+    )
+
+
+# class InfoAgentState(AgentState):
+class InfoAgentState(TypedDict):
+    messages: Annotated[list[AnyMessage], operator.add]  # TODO: check
+    user_id: int
+    user_decision: UserDecision | None
