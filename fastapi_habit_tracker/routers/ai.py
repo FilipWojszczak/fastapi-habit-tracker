@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlmodel import Session, select
 
-from ..ai.info_agent import get_info_agent
+from ..ai.info_agent import get_compiled_info_graph
 from ..ai.logging_agent import get_compiled_graph
 from ..ai.schemas import ExtractionStatus
 from ..db import get_langgraph_pool, get_session
@@ -131,30 +131,36 @@ def chat_with_info_agent(
     pool = get_langgraph_pool()
 
     with pool.connection() as conn:
-        info_agent = get_info_agent(conn, user.id)
+        info_agent = get_compiled_info_graph(conn)
         if not thread_id:
             thread_id = f"info-{uuid.uuid4()}"
-            initial_state = {"messages": [("user", text)]}
+            initial_state = {
+                "messages": [{"role": "user", "content": text}],
+                "user_id": user.id,
+            }
             config = {"configurable": {"thread_id": thread_id}}
             result = info_agent.invoke(initial_state, config=config)
+            return InfoAgentResponse(
+                message=result.get("messages")[-1].content
+                if result.get("messages")
+                else None,
+                thread_id=thread_id,
+            )
         else:
             config = {"configurable": {"thread_id": thread_id}}
 
             current_state_snapshot = info_agent.get_state(config)
             if not current_state_snapshot.next:
                 raise HTTPException(status_code=400, detail="Thread closed or expired.")
-
-            info_agent.update_state(config, {"messages": [("user", text)]})
-
+            info_agent.update_state(
+                config,
+                {"messages": [{"role": "user", "content": text}]},
+                as_node="interpret_decision",
+            )
             result = info_agent.invoke(None, config=config)
-
-    if "__interrupt__" in result:
-        query = result["__interrupt__"][-1].value["action_requests"][-1]["description"][
-            "args"
-        ]["query"]
-        message = f"Following query will be executed: {query}\n Do you approve?"
-        return InfoAgentResponse(message=message, thread_id=thread_id)
-
-    return InfoAgentResponse(
-        message=result["messages"][-1].content, thread_id=thread_id
-    )
+            return InfoAgentResponse(
+                message=result.get("messages")[-1].content
+                if result.get("messages")
+                else None,
+                thread_id=thread_id,
+            )

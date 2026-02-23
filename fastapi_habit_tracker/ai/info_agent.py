@@ -1,7 +1,7 @@
 import textwrap
 from typing import Literal
 
-from IPython.display import Image, display
+from IPython.display import Image
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -125,7 +125,5 @@ def get_compiled_info_graph(conn):
     app = workflow.compile(
         checkpointer=checkpointer, interrupt_before=["interpret_decision"]
     )
-    display(
-        Image(app.get_graph().draw_png("/home/filip/Downloads/info_agent_graph.png"))
-    )
+    Image(app.get_graph().draw_png("/home/filip/Downloads/info_agent_graph.png"))
     return app
