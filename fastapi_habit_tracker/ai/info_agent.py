@@ -1,7 +1,6 @@
 import textwrap
 from typing import Literal
 
-from IPython.display import Image
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -64,7 +63,7 @@ def interpret_decision_node(state: InfoAgentState) -> InfoAgentState:
     You need to interpret user's response and decide if user accepted or rejected the proposed SQL query.
     """)  # noqa: E501
     structured_llm = llm.with_structured_output(UserDecision)
-    user_input = state["messages"][-1].content
+    user_input = state["user_decision_text"]
 
     result = structured_llm.invoke(
         [
@@ -122,8 +121,6 @@ workflow.add_edge("handle_rejection", END)
 
 def get_compiled_info_graph(conn):
     checkpointer = PostgresSaver(conn)
-    app = workflow.compile(
+    return workflow.compile(
         checkpointer=checkpointer, interrupt_before=["interpret_decision"]
     )
-    Image(app.get_graph().draw_png("/home/filip/Downloads/info_agent_graph.png"))
-    return app

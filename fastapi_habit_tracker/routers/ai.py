@@ -140,27 +140,43 @@ def chat_with_info_agent(
             }
             config = {"configurable": {"thread_id": thread_id}}
             result = info_agent.invoke(initial_state, config=config)
-            return InfoAgentResponse(
-                message=result.get("messages")[-1].content
-                if result.get("messages")
-                else None,
-                thread_id=thread_id,
-            )
         else:
             config = {"configurable": {"thread_id": thread_id}}
 
             current_state_snapshot = info_agent.get_state(config)
             if not current_state_snapshot.next:
                 raise HTTPException(status_code=400, detail="Thread closed or expired.")
-            info_agent.update_state(
-                config,
-                {"messages": [{"role": "user", "content": text}]},
-                as_node="interpret_decision",
-            )
+
+            if hasattr(
+                current_state_snapshot.values.get("messages", [])[-1], "tool_calls"
+            ):
+                info_agent.update_state(config, {"user_decision_text": text})
+            else:
+                info_agent.update_state(
+                    config, {"messages": [{"role": "user", "content": text}]}
+                )
+
             result = info_agent.invoke(None, config=config)
+
+        if result.get("messages") and len(result["messages"]) > 0:
+            if (
+                hasattr(result.get("messages")[-1], "tool_calls")
+                and len(result.get("messages")[-1].tool_calls) > 0
+            ):
+                query = result.get("messages")[-1].tool_calls[0]["args"]["query"]
+                message = f"Do you agree to send the following SQL query: '{query}'?"
+            else:
+                message = (
+                    result["messages"][-1].content[0]["text"]
+                    if isinstance(result["messages"][-1].content, list)
+                    else result["messages"][-1].content
+                )
+
             return InfoAgentResponse(
-                message=result.get("messages")[-1].content
-                if result.get("messages")
-                else None,
+                message=message,
                 thread_id=thread_id,
             )
+        return InfoAgentResponse(
+            message="Unknown AI error.",
+            thread_id=None,
+        )

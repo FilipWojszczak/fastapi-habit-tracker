@@ -1,8 +1,8 @@
-import operator
 from enum import Enum
 from typing import Annotated, Literal, TypedDict
 
 from langchain.messages import AnyMessage
+from langgraph.graph import add_messages
 from pydantic import BaseModel, Field
 
 
@@ -62,6 +62,7 @@ class UserDecision(BaseModel):
 
 # class InfoAgentState(AgentState):
 class InfoAgentState(TypedDict):
-    messages: Annotated[list[AnyMessage], operator.add]  # TODO: check
+    messages: Annotated[list[AnyMessage], add_messages]  # TODO: check
     user_id: int
+    user_decision_text: str | None
     user_decision: UserDecision | None
