@@ -4,12 +4,13 @@ from typing import Annotated
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlmodel import Session, select
 
+from ..ai.info_agent import get_compiled_info_graph
 from ..ai.logging_agent import get_compiled_graph
 from ..ai.schemas import ExtractionStatus
 from ..db import get_langgraph_pool, get_session
 from ..dependencies.auth import get_current_user
 from ..models import Habit, HabitLog, User
-from ..schemas.ai import LoggingAgentResponse
+from ..schemas.ai import InfoAgentResponse, LoggingAgentResponse
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -46,7 +47,7 @@ def chat_with_logging_agent(
         habit_graph = get_compiled_graph(conn)
 
         if not thread_id:
-            thread_id = str(uuid.uuid4())
+            thread_id = f"log-{uuid.uuid4()}"
             initial_state = {
                 "user_input": text,
                 "chat_history": [],
@@ -108,3 +109,74 @@ def chat_with_logging_agent(
         )
 
     return LoggingAgentResponse(status="error", message="Unknown AI error.")
+
+
+@router.post(
+    "/chat-info-agent",
+    response_model=InfoAgentResponse,
+    summary="Get information about yourself with AI",
+    description=(
+        "Analyzes natural language text to return information or statistics about the "
+        "user.\n\n"
+        "The Agent proposes SQL queries for retrieving data. User can accept or reject "
+        "it. If accepted, the agent prepares statement based on result of the query (or"
+        " queries, if needed more)."
+    ),
+)
+def chat_with_info_agent(
+    text: Annotated[str, Body(embed=True)],
+    user: Annotated[User, Depends(get_current_user)],
+    thread_id: Annotated[str | None, Body(embed=True)] = None,
+):
+    pool = get_langgraph_pool()
+
+    with pool.connection() as conn:
+        info_agent = get_compiled_info_graph(conn)
+        if not thread_id:
+            thread_id = f"info-{uuid.uuid4()}"
+            initial_state = {
+                "messages": [{"role": "user", "content": text}],
+                "user_id": user.id,
+            }
+            config = {"configurable": {"thread_id": thread_id}}
+            result = info_agent.invoke(initial_state, config=config)
+        else:
+            config = {"configurable": {"thread_id": thread_id}}
+
+            current_state_snapshot = info_agent.get_state(config)
+            if not current_state_snapshot.next:
+                raise HTTPException(status_code=400, detail="Thread closed or expired.")
+
+            if hasattr(
+                current_state_snapshot.values.get("messages", [])[-1], "tool_calls"
+            ):
+                info_agent.update_state(config, {"user_decision_text": text})
+            else:
+                info_agent.update_state(
+                    config, {"messages": [{"role": "user", "content": text}]}
+                )
+
+            result = info_agent.invoke(None, config=config)
+
+        if result.get("messages") and len(result["messages"]) > 0:
+            if (
+                hasattr(result.get("messages")[-1], "tool_calls")
+                and len(result.get("messages")[-1].tool_calls) > 0
+            ):
+                query = result.get("messages")[-1].tool_calls[0]["args"]["query"]
+                message = f"Do you agree to send the following SQL query: '{query}'?"
+            else:
+                message = (
+                    result["messages"][-1].content[0]["text"]
+                    if isinstance(result["messages"][-1].content, list)
+                    else result["messages"][-1].content
+                )
+
+            return InfoAgentResponse(
+                message=message,
+                thread_id=thread_id,
+            )
+        return InfoAgentResponse(
+            message="Unknown AI error.",
+            thread_id=None,
+        )
