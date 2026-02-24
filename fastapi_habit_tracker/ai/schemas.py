@@ -60,9 +60,8 @@ class UserDecision(BaseModel):
     )
 
 
-# class InfoAgentState(AgentState):
 class InfoAgentState(TypedDict):
-    messages: Annotated[list[AnyMessage], add_messages]  # TODO: check
+    messages: Annotated[list[AnyMessage], add_messages]
     user_id: int
     user_decision_text: str | None
     user_decision: UserDecision | None
