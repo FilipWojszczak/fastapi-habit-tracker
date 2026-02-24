@@ -4,23 +4,23 @@ from typing import Literal
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.prebuilt import ToolNode
 from sqlalchemy import text
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db import engine
 from .schemas import InfoAgentState, UserDecision
 
 
 @tool
-def execute_sql(query: str) -> str:
+async def execute_sql(query: str) -> str:
     """Execute a SQL query and return the result as a string."""
     try:
-        with Session(engine) as session:
-            result = session.exec(text(query)).all()
-            return str(result)
+        async with AsyncSession(engine) as session:
+            result = await session.exec(text(query))
+            return str(result.all())
     except Exception as e:
         return f"Error: {e!s}"
 
@@ -29,7 +29,7 @@ llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview")
 llm_with_tools = llm.bind_tools([execute_sql])
 
 
-def info_generator_node(state: InfoAgentState) -> InfoAgentState:
+async def info_generator_node(state: InfoAgentState) -> InfoAgentState:
     system_prompt = textwrap.dedent(f"""
     You are a SQL analyst. Your goal is to return information about the user, their habits, and related logs.
 
@@ -45,7 +45,7 @@ def info_generator_node(state: InfoAgentState) -> InfoAgentState:
     """)  # noqa: E501
 
     messages = [SystemMessage(content=system_prompt)] + state["messages"]
-    response = llm_with_tools.invoke(messages)
+    response = await llm_with_tools.ainvoke(messages)
     return {"messages": [response], "user_decision": None}
 
 
@@ -58,14 +58,14 @@ def route_info_generator(
     return END
 
 
-def interpret_decision_node(state: InfoAgentState) -> InfoAgentState:
+async def interpret_decision_node(state: InfoAgentState) -> InfoAgentState:
     system_prompt = textwrap.dedent("""
     You need to interpret user's response and decide if user accepted or rejected the proposed SQL query.
     """)  # noqa: E501
     structured_llm = llm.with_structured_output(UserDecision)
     user_input = state["user_decision_text"]
 
-    result = structured_llm.invoke(
+    result = await structured_llm.ainvoke(
         [
             SystemMessage(content=system_prompt),
             HumanMessage(content=user_input),
@@ -120,7 +120,7 @@ workflow.add_edge("handle_rejection", END)
 
 
 def get_compiled_info_graph(conn):
-    checkpointer = PostgresSaver(conn)
+    checkpointer = AsyncPostgresSaver(conn)
     return workflow.compile(
         checkpointer=checkpointer, interrupt_before=["interpret_decision"]
     )

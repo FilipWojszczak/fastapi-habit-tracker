@@ -8,9 +8,9 @@ from .routers import ai, auth, habit_logs, habits
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_langgraph_pool()
+    await init_langgraph_pool()
     yield
-    close_langgraph_pool()
+    await close_langgraph_pool()
 
 
 app = FastAPI(title="FastAPI Habit Tracker", version="0.1.0", lifespan=lifespan)
