@@ -2,7 +2,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db import get_session
 from ..dependencies.auth import get_current_user
@@ -27,9 +28,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     ),
 )
 async def register_user(
-    user_data: UserCreate, session: Annotated[Session, Depends(get_session)]
+    user_data: UserCreate, session: Annotated[AsyncSession, Depends(get_session)]
 ):
-    existing_user = session.exec(
+    existing_user = await session.exec(
         select(User).where(User.email == user_data.email)
     ).one_or_none()
     if existing_user:
@@ -41,9 +42,9 @@ async def register_user(
         email=user_data.email,
         hashed_password=hash_password(user_data.password),
     )
-    session.add(new_user)
-    session.commit()
-    session.refresh(new_user)
+    await session.add(new_user)
+    await session.commit()
+    await session.refresh(new_user)
     return new_user
 
 
@@ -62,9 +63,9 @@ async def register_user(
 )
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    user = authenticate_user(form_data.username, form_data.password, session)
+    user = await authenticate_user(form_data.username, form_data.password, session)
     if not user:
         raise HTTPException(
             status_code=401,

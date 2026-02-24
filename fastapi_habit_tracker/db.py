@@ -1,12 +1,13 @@
 from psycopg_pool import ConnectionPool
-from sqlmodel import Session, create_engine
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from . import models  # noqa: F401
 from .config import get_settings
 
 database_url = get_settings().database_url
 
-engine = create_engine(
+engine = create_async_engine(
     database_url,
     echo=True,
     connect_args={"check_same_thread": False}
@@ -17,8 +18,8 @@ engine = create_engine(
 _langgraph_pool: ConnectionPool | None = None
 
 
-def get_session():
-    with Session(engine) as session:
+async def get_session():
+    async with AsyncSession(engine) as session:
         yield session
 
 

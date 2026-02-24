@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db import get_session
 from ..dependencies.auth import get_current_user
@@ -27,10 +27,10 @@ router = APIRouter(prefix="/habit-logs", tags=["habit logs"])
 )
 async def create_habit_log(
     habit_log_data: HabitLogCreate,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    habit = session.get(Habit, habit_log_data.habit_id)
+    habit = await session.get(Habit, habit_log_data.habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
     data = habit_log_data.model_dump()
@@ -38,9 +38,9 @@ async def create_habit_log(
     if data["performed_at"] is None:
         data["performed_at"] = datetime.now(UTC)
     habit_log = HabitLog(**data)
-    session.add(habit_log)
-    session.commit()
-    session.refresh(habit_log)
+    await session.add(habit_log)
+    await session.commit()
+    await session.refresh(habit_log)
     return habit_log
 
 
@@ -59,21 +59,21 @@ async def create_habit_log(
 async def update_habit_log(
     habit_log_id: int,
     habit_log_data: HabitLogUpdate,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    habit_log = session.get(HabitLog, habit_log_id)
+    habit_log = await session.get(HabitLog, habit_log_id)
     if not habit_log or habit_log.habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit log not found")
     habit_log_data_dict = habit_log_data.model_dump(exclude_unset=True)
     if "habit_id" in habit_log_data_dict:
-        new_habit = session.get(Habit, habit_log_data_dict["habit_id"])
+        new_habit = await session.get(Habit, habit_log_data_dict["habit_id"])
         if not new_habit or new_habit.user_id != user.id:
             raise HTTPException(status_code=404, detail="Habit not found")
     habit_log.sqlmodel_update(habit_log_data_dict)
-    session.add(habit_log)
-    session.commit()
-    session.refresh(habit_log)
+    await session.add(habit_log)
+    await session.commit()
+    await session.refresh(habit_log)
     return habit_log
 
 
@@ -89,12 +89,12 @@ async def update_habit_log(
 )
 async def delete_habit_log(
     habit_log_id: int,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    habit_log = session.get(HabitLog, habit_log_id)
+    habit_log = await session.get(HabitLog, habit_log_id)
     if not habit_log or habit_log.habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit log not found")
-    session.delete(habit_log)
-    session.commit()
+    await session.delete(habit_log)
+    await session.commit()
     return

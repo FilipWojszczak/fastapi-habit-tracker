@@ -2,7 +2,8 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..ai.info_agent import get_compiled_info_graph
 from ..ai.logging_agent import get_compiled_graph
@@ -27,14 +28,14 @@ router = APIRouter(prefix="/ai", tags=["AI"])
         "3. Saves the new log to the database.  \n"
     ),
 )
-def chat_with_logging_agent(
+async def chat_with_logging_agent(
     text: Annotated[str, Body(embed=True)],
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
     thread_id: Annotated[str | None, Body(embed=True)] = None,
 ):
     statement = select(Habit).where(Habit.user_id == user.id)
-    habits = session.exec(statement).all()
+    habits = await session.exec(statement).all()
     if not habits:
         raise HTTPException(
             status_code=400, detail="No habits found. Create one first."
@@ -97,9 +98,9 @@ def chat_with_logging_agent(
             )
 
         new_log = HabitLog(habit_id=matched_habit.id, value=data.value, note=data.note)
-        session.add(new_log)
-        session.commit()
-        session.refresh(new_log)
+        await session.add(new_log)
+        await session.commit()
+        await session.refresh(new_log)
 
         return LoggingAgentResponse(
             status="success",
@@ -123,7 +124,7 @@ def chat_with_logging_agent(
         " queries, if needed more)."
     ),
 )
-def chat_with_info_agent(
+async def chat_with_info_agent(
     text: Annotated[str, Body(embed=True)],
     user: Annotated[User, Depends(get_current_user)],
     thread_id: Annotated[str | None, Body(embed=True)] = None,

@@ -2,7 +2,8 @@ from datetime import UTC, datetime, timedelta
 
 import jwt
 from pwdlib import PasswordHash
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..config import get_settings
 from ..models import User
@@ -28,8 +29,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
 
 
-def authenticate_user(email: str, password: str, session: Session) -> User | None:
-    user = session.exec(select(User).where(User.email == email)).one_or_none()
+async def authenticate_user(
+    email: str, password: str, session: AsyncSession
+) -> User | None:
+    user = await session.exec(select(User).where(User.email == email)).one_or_none()
     if (
         not user
         or not verify_password(password, user.hashed_password)
