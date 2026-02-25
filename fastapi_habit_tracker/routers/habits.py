@@ -38,7 +38,7 @@ async def create_habit(
     user: Annotated[User, Depends(get_current_user)],
 ):
     habit = Habit(**habit_data.model_dump(), user_id=user.id)
-    await session.add(habit)
+    session.add(habit)
     await session.commit()
     await session.refresh(habit)
     return habit
@@ -65,7 +65,8 @@ async def list_habits(
     if include_stats:
         statement = statement.options(selectinload(Habit.logs))
 
-    habits = await session.exec(statement).all()
+    result = await session.exec(statement)
+    habits = result.all()
 
     if not include_stats:
         return habits
@@ -130,7 +131,7 @@ async def update_habit(
     habit.updated_at = datetime.now(UTC)
     habit_data_dict = habit_data.model_dump(exclude_unset=True)
     habit.sqlmodel_update(habit_data_dict)
-    await session.add(habit)
+    session.add(habit)
     await session.commit()
     await session.refresh(habit)
     return habit
@@ -196,7 +197,8 @@ async def list_logs_for_habit(
         statement = statement.where(HabitLog.performed_at <= to)
     statement = statement.order_by(HabitLog.performed_at.desc()).limit(limit)
 
-    return await session.exec(statement).all()
+    result = await session.exec(statement)
+    return result.all()
 
 
 @router.get(
@@ -232,7 +234,8 @@ async def get_stats_for_habit(
         to_dt = datetime.combine(to, time.max)
         statement = statement.where(HabitLog.performed_at <= to_dt)
     statement = statement.order_by(HabitLog.performed_at.desc())
-    logs = await session.exec(statement).all()
+    result = await session.exec(statement)
+    logs = result.all()
 
     if not logs:
         to_return = {

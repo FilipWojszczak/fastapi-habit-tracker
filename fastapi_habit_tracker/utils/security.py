@@ -32,7 +32,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 async def authenticate_user(
     email: str, password: str, session: AsyncSession
 ) -> User | None:
-    user = await session.exec(select(User).where(User.email == email)).one_or_none()
+    result = await session.exec(select(User).where(User.email == email))
+    user = result.one_or_none()
     if (
         not user
         or not verify_password(password, user.hashed_password)
