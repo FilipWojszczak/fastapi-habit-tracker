@@ -5,7 +5,7 @@ from fastapi_habit_tracker.models import User
 
 
 class UserFactory(Protocol):
-    def __call__(self, email: str, password: str = "securepassword") -> User: ...
+    async def __call__(self, email: str, password: str = "securepassword") -> User: ...
 
 
 class TokenFactory(Protocol):

@@ -1,8 +1,11 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlmodel import SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
 from tests.utils import TokenFactory, UserFactory
 
 from fastapi_habit_tracker.config import get_settings
@@ -12,46 +15,54 @@ from fastapi_habit_tracker.models import Habit, HabitLog, User  # noqa: F401
 from fastapi_habit_tracker.utils.security import create_access_token, hash_password
 
 
-@pytest.fixture(name="session")
-def session_fixture() -> Generator[Session]:
+@pytest_asyncio.fixture(name="session")
+async def session_fixture() -> AsyncGenerator[AsyncSession]:
     database_url = get_settings().database_url
     if "postgres" in database_url:
-        engine = create_engine(database_url)
+        engine = create_async_engine(database_url)
     else:
         raise ValueError("database_url must be set to a PostgreSQL database for tests.")
-    SQLModel.metadata.create_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
 
-    connection = engine.connect()
-    transaction = connection.begin()
+    connection = await engine.connect()
+    transaction = await connection.begin()
 
-    session = Session(bind=connection)
+    session = AsyncSession(bind=connection)
 
     yield session
 
-    session.close()
-    transaction.rollback()
-    connection.close()
+    await session.close()
+    await transaction.rollback()
+    await connection.close()
+    await engine.dispose()
 
 
-@pytest.fixture(name="client")
-def client_fixture(session: Session) -> Generator[TestClient]:
-    def get_session_override():
+@pytest_asyncio.fixture(name="client")
+async def client_fixture(session: AsyncSession) -> AsyncGenerator[AsyncClient]:
+    async def get_session_override():
         return session
 
     app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        yield client
+
     app.dependency_overrides.clear()
 
 
-@pytest.fixture(name="user_factory")
-def user_factory_fixture(session: Session) -> UserFactory:
-    def _create_user(email: str, password: str = "securepassword") -> User:
+@pytest_asyncio.fixture(name="user_factory")
+async def user_factory_fixture(
+    session: AsyncSession,
+) -> UserFactory:
+    async def _create_user(email: str, password: str = "securepassword") -> User:
         hashed_password = hash_password(password)
         user = User(email=email, hashed_password=hashed_password)
         session.add(user)
-        session.commit()
-        session.refresh(user)
+        await session.commit()
+        await session.refresh(user)
         return user
 
     return _create_user
