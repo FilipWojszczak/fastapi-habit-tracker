@@ -1,19 +1,19 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from tests.conftest import TokenFactory, UserFactory
 from tests.utils import dt_with_tzinfo_from_isoformat
 
 
-def test_habit_logs_crud(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_logs_crud(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Create a new habit
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Read Books",
@@ -28,7 +28,7 @@ def test_habit_logs_crud(
     # Create new habit logs
     yesterday = datetime.now(UTC) - timedelta(days=1)
 
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
@@ -41,7 +41,7 @@ def test_habit_logs_crud(
     response_date = dt_with_tzinfo_from_isoformat(log_data["performed_at"])
     assert response_date == yesterday
 
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "note": "Example note", "value": 30},
         headers={"Authorization": f"Bearer {token}"},
@@ -54,7 +54,7 @@ def test_habit_logs_crud(
     assert "performed_at" in log2_data
 
     # List all habit logs
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -74,7 +74,7 @@ def test_habit_logs_crud(
     assert logs[1]["performed_at"] == log_data["performed_at"]
 
     # Update the habit log
-    response = client.put(
+    response = await client.put(
         f"/habit-logs/{log_data['id']}",
         json={"note": "Updated note", "value": 15},
         headers={"Authorization": f"Bearer {token}"},
@@ -94,7 +94,7 @@ def test_habit_logs_crud(
     since = first_log_date
     to = first_log_date
 
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/?limit={limit}&since={since}&to={to}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -109,14 +109,14 @@ def test_habit_logs_crud(
     assert logs[0]["performed_at"] == updated_log_data["performed_at"]
 
     # Delete updated habit log
-    response = client.delete(
+    response = await client.delete(
         f"/habit-logs/{updated_log_data['id']}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 204
 
     # List all habit logs after deletion
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -130,15 +130,15 @@ def test_habit_logs_crud(
     assert logs[0]["performed_at"] == log2_data["performed_at"]
 
 
-def test_habit_logs_crud_as_not_authenticated(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_logs_crud_as_not_authenticated(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Create a new habit to have a valid habit_id
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Exercise",
@@ -151,14 +151,14 @@ def test_habit_logs_crud_as_not_authenticated(
     habit_id = habit_data["id"]
 
     # Create a new habit log without authentication
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id},
     )
     assert response.status_code == 401
 
     # Create a new habit log with authentication
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id},
         headers={"Authorization": f"Bearer {token}"},
@@ -168,27 +168,27 @@ def test_habit_logs_crud_as_not_authenticated(
     habit_log_id = log_data["id"]
 
     # Update a habit log without authentication
-    response = client.put(
+    response = await client.put(
         f"/habit-logs/{habit_log_id}",
         json={"note": "Updated note"},
     )
     assert response.status_code == 401
 
     # Delete a habit log without authentication
-    response = client.delete(f"/habit-logs/{habit_log_id}")
+    response = await client.delete(f"/habit-logs/{habit_log_id}")
     assert response.status_code == 401
 
 
-def test_create_habit_log_with_invalid_habit_id(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_create_habit_log_with_invalid_habit_id(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     invalid_habit_id = 9999
 
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": invalid_habit_id},
         headers={"Authorization": f"Bearer {token}"},
@@ -197,17 +197,17 @@ def test_create_habit_log_with_invalid_habit_id(
     assert response.json()["detail"] == "Habit not found"
 
 
-def test_not_existing_habit_log(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_not_existing_habit_log(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     non_existent_habit_log_id = 9999
 
     # Attempt to update a non-existing habit log
-    response = client.put(
+    response = await client.put(
         f"/habit-logs/{non_existent_habit_log_id}",
         json={"note": "Updated note"},
         headers={"Authorization": f"Bearer {token}"},
@@ -216,7 +216,7 @@ def test_not_existing_habit_log(
     assert response.json()["detail"] == "Habit log not found"
 
     # Attempt to delete a non-existing habit log
-    response = client.delete(
+    response = await client.delete(
         f"/habit-logs/{non_existent_habit_log_id}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -224,17 +224,17 @@ def test_not_existing_habit_log(
     assert response.json()["detail"] == "Habit log not found"
 
 
-def test_habit_log_access_by_different_user(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_log_access_by_different_user(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create two users and obtain tokens
-    user_1 = user_factory("alice@example.com")
+    user_1 = await user_factory("alice@example.com")
     token_1 = token_factory(user_1)
-    user_2 = user_factory("bob@example.com")
+    user_2 = await user_factory("bob@example.com")
     token_2 = token_factory(user_2)
 
     # Create a new habit with the first user
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Meditate",
@@ -247,7 +247,7 @@ def test_habit_log_access_by_different_user(
     habit_id = habit_data["id"]
 
     # Create a new habit log with the first user
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id},
         headers={"Authorization": f"Bearer {token_1}"},
@@ -257,7 +257,7 @@ def test_habit_log_access_by_different_user(
 
     # Attempt to update the habit log created by the first user with the second user's
     # token
-    response = client.put(
+    response = await client.put(
         f"/habit-logs/{habit_log_id}",
         json={"note": "Trying to update"},
         headers={"Authorization": f"Bearer {token_2}"},
@@ -267,7 +267,7 @@ def test_habit_log_access_by_different_user(
 
     # Attempt to delete the habit log created by the first user with the second user's
     # token
-    response = client.delete(
+    response = await client.delete(
         f"/habit-logs/{habit_log_id}",
         headers={"Authorization": f"Bearer {token_2}"},
     )
