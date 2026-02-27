@@ -3,7 +3,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import selectinload
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..db import get_session
 from ..dependencies.auth import get_current_user
@@ -33,13 +34,13 @@ router = APIRouter(prefix="/habits", tags=["habits"])
 )
 async def create_habit(
     habit_data: HabitCreate,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
     habit = Habit(**habit_data.model_dump(), user_id=user.id)
     session.add(habit)
-    session.commit()
-    session.refresh(habit)
+    await session.commit()
+    await session.refresh(habit)
     return habit
 
 
@@ -55,7 +56,7 @@ async def create_habit(
     ),
 )
 async def list_habits(
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
     include_stats: bool = False,
 ):
@@ -64,7 +65,8 @@ async def list_habits(
     if include_stats:
         statement = statement.options(selectinload(Habit.logs))
 
-    habits = session.exec(statement).all()
+    result = await session.exec(statement)
+    habits = result.all()
 
     if not include_stats:
         return habits
@@ -96,10 +98,10 @@ async def list_habits(
 )
 async def get_habit(
     habit_id: int,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    habit = session.get(Habit, habit_id)
+    habit = await session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
     return habit
@@ -120,18 +122,18 @@ async def get_habit(
 async def update_habit(
     habit_id: int,
     habit_data: HabitUpdate,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    habit = session.get(Habit, habit_id)
+    habit = await session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
     habit.updated_at = datetime.now(UTC)
     habit_data_dict = habit_data.model_dump(exclude_unset=True)
     habit.sqlmodel_update(habit_data_dict)
     session.add(habit)
-    session.commit()
-    session.refresh(habit)
+    await session.commit()
+    await session.refresh(habit)
     return habit
 
 
@@ -148,14 +150,14 @@ async def update_habit(
 )
 async def delete_habit(
     habit_id: int,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    habit = session.get(Habit, habit_id)
+    habit = await session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
-    session.delete(habit)
-    session.commit()
+    await session.delete(habit)
+    await session.commit()
     return
 
 
@@ -174,7 +176,7 @@ async def delete_habit(
 )
 async def list_logs_for_habit(
     habit_id: int,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
     since: date | None = None,
     to: date | None = None,
@@ -182,7 +184,7 @@ async def list_logs_for_habit(
 ):
     if since is not None and to is not None and since > to:
         raise HTTPException(status_code=422, detail="'since' must be before 'to'")
-    habit = session.get(Habit, habit_id)
+    habit = await session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
 
@@ -195,7 +197,8 @@ async def list_logs_for_habit(
         statement = statement.where(HabitLog.performed_at <= to)
     statement = statement.order_by(HabitLog.performed_at.desc()).limit(limit)
 
-    return session.exec(statement).all()
+    result = await session.exec(statement)
+    return result.all()
 
 
 @router.get(
@@ -212,14 +215,14 @@ async def list_logs_for_habit(
 )
 async def get_stats_for_habit(
     habit_id: int,
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
     since: date | None = None,
     to: date | None = None,
 ):
     if since is not None and to is not None and since > to:
         raise HTTPException(status_code=422, detail="'since' must be before 'to'")
-    habit = session.get(Habit, habit_id)
+    habit = await session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
 
@@ -231,7 +234,8 @@ async def get_stats_for_habit(
         to_dt = datetime.combine(to, time.max)
         statement = statement.where(HabitLog.performed_at <= to_dt)
     statement = statement.order_by(HabitLog.performed_at.desc())
-    logs = session.exec(statement).all()
+    result = await session.exec(statement)
+    logs = result.all()
 
     if not logs:
         to_return = {

@@ -1,32 +1,32 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from tests.conftest import TokenFactory, UserFactory
 
 from fastapi_habit_tracker.ai.schemas import HabitLogData, LoggingAgentDecision
 from fastapi_habit_tracker.schemas.ai import LoggingAgentResponse
 
 
-def test_log_habit_with_ai_mocked(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_log_habit_with_ai_mocked(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Create a few habits for the user
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={"name": "Running", "description": "Go for a run", "period": "daily"},
         headers={"Authorization": f"Bearer {token}"},
     )
     habit_id = response.json()["id"]
-    client.post(
+    await client.post(
         "/habits/",
         json={"name": "Reading", "description": "Read a book", "period": "daily"},
         headers={"Authorization": f"Bearer {token}"},
     )
-    client.post(
+    await client.post(
         "/habits/",
         json={
             "name": "Meditation",
@@ -60,10 +60,11 @@ def test_log_habit_with_ai_mocked(
         patch("fastapi_habit_tracker.routers.ai.get_langgraph_pool"),
         patch("fastapi_habit_tracker.routers.ai.get_compiled_graph") as mock_get_graph,
     ):
-        mock_get_graph.return_value.invoke.return_value = mock_result
+        # Mock the invoke method of the compiled graph
+        mock_get_graph.return_value.ainvoke = AsyncMock(return_value=mock_result)
 
         # Call the endpoint
-        response = client.post(
+        response = await client.post(
             "/ai/chat-logging-agent/",
             json={"text": "I ran for 30 minutes."},
             headers={"Authorization": f"Bearer {token}"},
@@ -77,11 +78,11 @@ def test_log_habit_with_ai_mocked(
     assert data["log"]["value"] == habit_log.value
     assert data["log"]["note"] == habit_log.note
 
-    # Ensure that our mock was called exactly once
-    mock_get_graph.return_value.invoke.assert_called_once()
+    # Ensure that our mock was called exactly once using the async method
+    mock_get_graph.return_value.ainvoke.assert_called_once()
 
     # Check that the log was added to db and associated with the correct habit
-    response = client.get(
+    response = await client.get(
         "/habits/?include_stats=true",
         headers={"Authorization": f"Bearer {token}"},
     )

@@ -3,7 +3,7 @@ from typing import Literal
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
-from langgraph.checkpoint.postgres import PostgresSaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import END, StateGraph
 
 from ..config import get_settings
@@ -49,7 +49,7 @@ QUESTION_SYSTEM = textwrap.dedent("""
 """)
 
 
-def extractor_node(state: LoggingAgentState):
+async def extractor_node(state: LoggingAgentState):
     habits_str = ", ".join(state["available_habits"])
 
     full_context = "\n".join(state.get("chat_history", []))
@@ -63,7 +63,7 @@ def extractor_node(state: LoggingAgentState):
     )
 
     chain = prompt | structured_llm
-    result: LoggingAgentDecision = chain.invoke({"habits_list": habits_str})
+    result: LoggingAgentDecision = await chain.ainvoke({"habits_list": habits_str})
 
     return {
         "decision": result,
@@ -71,7 +71,7 @@ def extractor_node(state: LoggingAgentState):
     }
 
 
-def question_generator_node(state: LoggingAgentState):
+async def question_generator_node(state: LoggingAgentState):
     habits_str = ", ".join(state["available_habits"])
     reason = state["decision"].reasoning or "Unclear input"
 
@@ -79,7 +79,9 @@ def question_generator_node(state: LoggingAgentState):
         [("system", QUESTION_SYSTEM), ("human", state["user_input"])]
     )
 
-    response = (prompt | llm).invoke({"habits_list": habits_str, "reason": reason})
+    response = await (prompt | llm).ainvoke(
+        {"habits_list": habits_str, "reason": reason}
+    )
 
     return {
         "question": response.content,
@@ -129,6 +131,6 @@ workflow.add_edge("human_input", "extractor")
 
 
 def get_compiled_graph(conn):
-    checkpointer = PostgresSaver(conn)
+    checkpointer = AsyncPostgresSaver(conn)
 
     return workflow.compile(checkpointer=checkpointer, interrupt_before=["human_input"])

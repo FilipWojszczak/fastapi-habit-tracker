@@ -1,19 +1,19 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from tests.conftest import TokenFactory, UserFactory
 from tests.utils import dt_with_tzinfo_from_isoformat
 
 
-def test_habit_crud(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_crud(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Create a new habit
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Exercise",
@@ -30,7 +30,7 @@ def test_habit_crud(
     habit_id = data["id"]
 
     # Retrieve the created habit
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -44,7 +44,7 @@ def test_habit_crud(
     assert "updated_at" in data
 
     # List all habits
-    response = client.get(
+    response = await client.get(
         "/habits/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -53,7 +53,7 @@ def test_habit_crud(
     assert any(habit["id"] == habit_id for habit in data)
 
     # Update the habit
-    response = client.put(
+    response = await client.put(
         f"/habits/{habit_id}",
         json={"name": "Exercise Updated", "description": "Updated description"},
         headers={"Authorization": f"Bearer {token}"},
@@ -65,22 +65,22 @@ def test_habit_crud(
     assert data["created_at"] != data["updated_at"]
 
     # Delete the habit
-    response = client.delete(
+    response = await client.delete(
         f"/habits/{habit_id}",
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 204
 
 
-def test_habit_stats(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_stats(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Create a new habit
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Read Books",
@@ -94,7 +94,7 @@ def test_habit_stats(
 
     # Create habit log in the past (not yesterday)
     past_date = datetime.now(UTC) - timedelta(days=5)
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": past_date.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
@@ -102,7 +102,7 @@ def test_habit_stats(
     assert response.status_code == 201
 
     # Retrieve habit's stats
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/stats/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -117,7 +117,7 @@ def test_habit_stats(
 
     # Create habit log with performed_at as yesterday
     yesterday = datetime.now(UTC) - timedelta(days=1)
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
@@ -125,7 +125,7 @@ def test_habit_stats(
     assert response.status_code == 201
 
     # Retrieve habit's stats
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/stats/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -140,7 +140,7 @@ def test_habit_stats(
 
     # Create more habit logs (1 today and a few in the past, but not yesterday)
     today = datetime.now(UTC)
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": today.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
@@ -151,7 +151,7 @@ def test_habit_stats(
     for offset in days_offsets:
         log_date = today - timedelta(days=offset)
 
-        response = client.post(
+        response = await client.post(
             "/habit-logs/",
             json={"habit_id": habit_id, "performed_at": log_date.isoformat()},
             headers={"Authorization": f"Bearer {token}"},
@@ -159,7 +159,7 @@ def test_habit_stats(
         assert response.status_code == 201
 
     # Retrieve habit's stats
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/stats/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -175,7 +175,7 @@ def test_habit_stats(
     # Create habit logs in a days that already has a log (today and day in the past, but
     # not yesterday)
     duplicate_log_date = datetime.now(UTC) - timedelta(days=4)
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": duplicate_log_date.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
@@ -183,7 +183,7 @@ def test_habit_stats(
     assert response.status_code == 201
 
     newer_today = datetime.now(UTC)
-    response = client.post(
+    response = await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": newer_today.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
@@ -191,7 +191,7 @@ def test_habit_stats(
     assert response.status_code == 201
 
     # Retrieve habit's stats
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/stats/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -207,7 +207,7 @@ def test_habit_stats(
     # Retrieve habit's stats with 'since' and 'to' filters
     since_date = (datetime.now(UTC) - timedelta(days=6)).date()
     to_date = (datetime.now(UTC) - timedelta(days=1)).date()
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/stats/?since={since_date.isoformat()}&to={to_date.isoformat()}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -222,7 +222,7 @@ def test_habit_stats(
 
     # Retrieve habit's stats with only 'since' filter
     since_date = (datetime.now(UTC) - timedelta(days=4)).date()
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/stats/?since={since_date.isoformat()}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -237,7 +237,7 @@ def test_habit_stats(
 
     # Retrieve habit's stats with only 'to' filter
     to_date = (datetime.now(UTC) - timedelta(days=7)).date()
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/stats/?to={to_date.isoformat()}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -254,15 +254,15 @@ def test_habit_stats(
     )
 
 
-def test_habit_list(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_list(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Create two habits
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Read Books",
@@ -274,7 +274,7 @@ def test_habit_list(
     habit_data = response.json()
     habit_id = habit_data["id"]
 
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Walk",
@@ -291,25 +291,25 @@ def test_habit_list(
     yesterday = datetime.now(UTC) - timedelta(days=1)
     today = datetime.now(UTC)
 
-    client.post(
+    await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": two_days_ago.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    client.post(
+    await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    client.post(
+    await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": yesterday.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    client.post(
+    await client.post(
         "/habit-logs/",
         json={"habit_id": habit_id, "performed_at": today.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
@@ -318,20 +318,20 @@ def test_habit_list(
     three_days_ago = datetime.now(UTC) - timedelta(days=3)
     four_days_ago = datetime.now(UTC) - timedelta(days=4)
 
-    client.post(
+    await client.post(
         "/habit-logs/",
         json={"habit_id": habit2_id, "performed_at": three_days_ago.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
     )
 
-    client.post(
+    await client.post(
         "/habit-logs/",
         json={"habit_id": habit2_id, "performed_at": four_days_ago.isoformat()},
         headers={"Authorization": f"Bearer {token}"},
     )
 
     # List all habits without stats
-    response = client.get(
+    response = await client.get(
         "/habits/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -345,7 +345,7 @@ def test_habit_list(
     assert habit_list[habit2_id]["stats"] is None
 
     # List all habits with stats
-    response = client.get(
+    response = await client.get(
         "/habits/?include_stats=true",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -361,15 +361,15 @@ def test_habit_list(
     assert habit_list[habit2_id]["stats"]["current_streak_days"] == 0
 
 
-def test_habit_logs(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_logs(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Create a new habit
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Read Books",
@@ -388,7 +388,7 @@ def test_habit_logs(
     for offset in range(10):
         log_date = today - timedelta(days=offset)
 
-        response = client.post(
+        response = await client.post(
             "/habit-logs/",
             json={
                 "habit_id": habit_id,
@@ -402,7 +402,7 @@ def test_habit_logs(
         habit_logs_responses.append(response.json())
 
     # List all habit logs
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -418,7 +418,7 @@ def test_habit_logs(
 
     # List habit logs with 'since' filter
     since = (today - timedelta(days=5)).date()
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/?since={since}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -434,7 +434,7 @@ def test_habit_logs(
 
     # List habit logs with 'to' filter
     to = (today - timedelta(days=7)).date()
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/?to={to}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -450,7 +450,7 @@ def test_habit_logs(
 
     # List habit logs with 'limit' filter
     limit = 4
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/?limit={limit}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -468,7 +468,7 @@ def test_habit_logs(
     since = (today - timedelta(days=8)).date()
     to = (today - timedelta(days=2)).date()
     limit = 3
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}/logs/?limit={limit}&since={since}&to={to}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -483,15 +483,15 @@ def test_habit_logs(
         assert logs[i]["performed_at"] == habit_logs_responses[j]["performed_at"]
 
 
-def test_habit_crud_as_not_authenticated(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_crud_as_not_authenticated(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     # Attempt to create a habit without authentication
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Exercise",
@@ -502,7 +502,7 @@ def test_habit_crud_as_not_authenticated(
     assert response.status_code == 401
 
     # Create a new habit with authentication
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Exercise",
@@ -515,26 +515,26 @@ def test_habit_crud_as_not_authenticated(
     habit_id = habit_data["id"]
 
     # Attempt to list habits without authentication
-    response = client.get("/habits/")
+    response = await client.get("/habits/")
     assert response.status_code == 401
 
     # Attempt to retrieve the created habit without authentication
-    response = client.get(f"/habits/{habit_id}")
+    response = await client.get(f"/habits/{habit_id}")
     assert response.status_code == 401
 
     # Attempt to update the habit without authentication
-    response = client.put(
+    response = await client.put(
         f"/habits/{habit_id}",
         json={"name": "Exercise Updated", "description": "Updated description"},
     )
     assert response.status_code == 401
 
     # Attempt to delete the habit without authentication
-    response = client.delete(f"/habits/{habit_id}")
+    response = await client.delete(f"/habits/{habit_id}")
     assert response.status_code == 401
 
     # List habits with authentication
-    response = client.get(
+    response = await client.get(
         "/habits/",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -543,7 +543,7 @@ def test_habit_crud_as_not_authenticated(
     assert any(habit["id"] == habit_id for habit in response.json())
 
     # Retrieve the created habit with authentication
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -555,17 +555,17 @@ def test_habit_crud_as_not_authenticated(
     assert data["period"] == "daily"
 
 
-def test_not_existing_habit(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_not_existing_habit(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create a user and obtain a token
-    user = user_factory("alice@example.com")
+    user = await user_factory("alice@example.com")
     token = token_factory(user)
 
     non_existent_habit_id = 9999
 
     # Retrieve a non-existing habit
-    response = client.get(
+    response = await client.get(
         f"/habits/{non_existent_habit_id}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -573,7 +573,7 @@ def test_not_existing_habit(
     assert response.json()["detail"] == "Habit not found"
 
     # Update a non-existing habit
-    response = client.put(
+    response = await client.put(
         f"/habits/{non_existent_habit_id}",
         json={"name": "Non-existing Habit", "description": "Should not exist"},
         headers={"Authorization": f"Bearer {token}"},
@@ -582,7 +582,7 @@ def test_not_existing_habit(
     assert response.json()["detail"] == "Habit not found"
 
     # Delete a non-existing habit
-    response = client.delete(
+    response = await client.delete(
         f"/habits/{non_existent_habit_id}",
         headers={"Authorization": f"Bearer {token}"},
     )
@@ -590,17 +590,17 @@ def test_not_existing_habit(
     assert response.json()["detail"] == "Habit not found"
 
 
-def test_habit_access_by_different_user(
-    client: TestClient, user_factory: UserFactory, token_factory: TokenFactory
+async def test_habit_access_by_different_user(
+    client: AsyncClient, user_factory: UserFactory, token_factory: TokenFactory
 ):
     # Create two users and obtain tokens
-    user_1 = user_factory("alice@example.com")
+    user_1 = await user_factory("alice@example.com")
     token_1 = token_factory(user_1)
-    user_2 = user_factory("bob@example.com")
+    user_2 = await user_factory("bob@example.com")
     token_2 = token_factory(user_2)
 
     # Create a new habit with the first user
-    response = client.post(
+    response = await client.post(
         "/habits/",
         json={
             "name": "Meditate",
@@ -613,7 +613,7 @@ def test_habit_access_by_different_user(
     habit_id = habit_data["id"]
 
     # Attempt to retrieve the habit with the second user
-    response = client.get(
+    response = await client.get(
         f"/habits/{habit_id}",
         headers={"Authorization": f"Bearer {token_2}"},
     )
@@ -621,7 +621,7 @@ def test_habit_access_by_different_user(
     assert response.json()["detail"] == "Habit not found"
 
     # Attempt to update the habit with the second user
-    response = client.put(
+    response = await client.put(
         f"/habits/{habit_id}",
         json={"name": "Trying to update", "description": "Should not work"},
         headers={"Authorization": f"Bearer {token_2}"},
@@ -630,7 +630,7 @@ def test_habit_access_by_different_user(
     assert response.json()["detail"] == "Habit not found"
 
     # Attempt to delete the habit with the second user
-    response = client.delete(
+    response = await client.delete(
         f"/habits/{habit_id}",
         headers={"Authorization": f"Bearer {token_2}"},
     )

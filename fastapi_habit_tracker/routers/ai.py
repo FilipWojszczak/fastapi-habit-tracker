@@ -2,7 +2,8 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException
-from sqlmodel import Session, select
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from ..ai.info_agent import get_compiled_info_graph
 from ..ai.logging_agent import get_compiled_graph
@@ -27,14 +28,15 @@ router = APIRouter(prefix="/ai", tags=["AI"])
         "3. Saves the new log to the database.  \n"
     ),
 )
-def chat_with_logging_agent(
+async def chat_with_logging_agent(
     text: Annotated[str, Body(embed=True)],
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_session)],
     user: Annotated[User, Depends(get_current_user)],
     thread_id: Annotated[str | None, Body(embed=True)] = None,
 ):
     statement = select(Habit).where(Habit.user_id == user.id)
-    habits = session.exec(statement).all()
+    result = await session.exec(statement)
+    habits = result.all()
     if not habits:
         raise HTTPException(
             status_code=400, detail="No habits found. Create one first."
@@ -43,7 +45,7 @@ def chat_with_logging_agent(
 
     pool = get_langgraph_pool()
 
-    with pool.connection() as conn:
+    async with pool.connection() as conn:
         habit_graph = get_compiled_graph(conn)
 
         if not thread_id:
@@ -55,28 +57,28 @@ def chat_with_logging_agent(
                 "attempt_count": 0,
             }
             config = {"configurable": {"thread_id": thread_id}}
-            result = habit_graph.invoke(initial_state, config=config)
+            agent_result = await habit_graph.ainvoke(initial_state, config=config)
         else:
             config = {"configurable": {"thread_id": thread_id}}
 
-            current_state_snapshot = habit_graph.get_state(config)
+            current_state_snapshot = await habit_graph.aget_state(config)
             if not current_state_snapshot.next:
                 raise HTTPException(status_code=400, detail="Thread closed or expired.")
 
-            habit_graph.update_state(
+            await habit_graph.aupdate_state(
                 config,
                 {"user_input": text},
                 as_node="human_input",
             )
 
-            result = habit_graph.invoke(None, config=config)
+            agent_result = await habit_graph.ainvoke(None, config=config)
 
-    final_decision = result.get("decision")
+    final_decision = agent_result.get("decision")
 
     if final_decision.status == ExtractionStatus.AMBIGUOUS:
         return LoggingAgentResponse(
             status="question",
-            message=result.get("question", "Could you clarify?"),
+            message=agent_result.get("question", "Could you clarify?"),
             thread_id=thread_id,
         )
 
@@ -98,8 +100,8 @@ def chat_with_logging_agent(
 
         new_log = HabitLog(habit_id=matched_habit.id, value=data.value, note=data.note)
         session.add(new_log)
-        session.commit()
-        session.refresh(new_log)
+        await session.commit()
+        await session.refresh(new_log)
 
         return LoggingAgentResponse(
             status="success",
@@ -123,14 +125,14 @@ def chat_with_logging_agent(
         " queries, if needed more)."
     ),
 )
-def chat_with_info_agent(
+async def chat_with_info_agent(
     text: Annotated[str, Body(embed=True)],
     user: Annotated[User, Depends(get_current_user)],
     thread_id: Annotated[str | None, Body(embed=True)] = None,
 ):
     pool = get_langgraph_pool()
 
-    with pool.connection() as conn:
+    async with pool.connection() as conn:
         info_agent = get_compiled_info_graph(conn)
         if not thread_id:
             thread_id = f"info-{uuid.uuid4()}"
@@ -139,37 +141,37 @@ def chat_with_info_agent(
                 "user_id": user.id,
             }
             config = {"configurable": {"thread_id": thread_id}}
-            result = info_agent.invoke(initial_state, config=config)
+            agent_result = await info_agent.ainvoke(initial_state, config=config)
         else:
             config = {"configurable": {"thread_id": thread_id}}
 
-            current_state_snapshot = info_agent.get_state(config)
+            current_state_snapshot = await info_agent.aget_state(config)
             if not current_state_snapshot.next:
                 raise HTTPException(status_code=400, detail="Thread closed or expired.")
 
             if hasattr(
                 current_state_snapshot.values.get("messages", [])[-1], "tool_calls"
             ):
-                info_agent.update_state(config, {"user_decision_text": text})
+                await info_agent.aupdate_state(config, {"user_decision_text": text})
             else:
-                info_agent.update_state(
+                await info_agent.aupdate_state(
                     config, {"messages": [{"role": "user", "content": text}]}
                 )
 
-            result = info_agent.invoke(None, config=config)
+            agent_result = await info_agent.ainvoke(None, config=config)
 
-        if result.get("messages") and len(result["messages"]) > 0:
+        if agent_result.get("messages") and len(agent_result["messages"]) > 0:
             if (
-                hasattr(result.get("messages")[-1], "tool_calls")
-                and len(result.get("messages")[-1].tool_calls) > 0
+                hasattr(agent_result.get("messages")[-1], "tool_calls")
+                and len(agent_result.get("messages")[-1].tool_calls) > 0
             ):
-                query = result.get("messages")[-1].tool_calls[0]["args"]["query"]
+                query = agent_result.get("messages")[-1].tool_calls[0]["args"]["query"]
                 message = f"Do you agree to send the following SQL query: '{query}'?"
             else:
                 message = (
-                    result["messages"][-1].content[0]["text"]
-                    if isinstance(result["messages"][-1].content, list)
-                    else result["messages"][-1].content
+                    agent_result["messages"][-1].content[0]["text"]
+                    if isinstance(agent_result["messages"][-1].content, list)
+                    else agent_result["messages"][-1].content
                 )
 
             return InfoAgentResponse(
