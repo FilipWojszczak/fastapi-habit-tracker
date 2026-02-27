@@ -46,7 +46,7 @@ async def client_fixture(session: AsyncSession) -> AsyncGenerator[AsyncClient]:
     app.dependency_overrides[get_session] = get_session_override
 
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
+        transport=ASGITransport(app=app), base_url="http://test", follow_redirects=True
     ) as client:
         yield client
 
