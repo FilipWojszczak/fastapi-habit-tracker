@@ -19,7 +19,7 @@ dependencies = [
     "langchain-ollama>=1.0.1",
     "langgraph>=1.0.7",
     "langgraph-checkpoint-postgres>=3.0.4",
-    "psycopg>=3.3.2",
+    "psycopg[binary]>=3.3.2",
     "psycopg-pool>=3.3.0",
     "pwdlib[argon2]>=0.3.0",
     "pydantic-settings>=2.12.0",
@@ -69,7 +69,6 @@ line-ending = "auto"
 
 [dependency-groups]
 dev = [
-    "hatchling>=1.28.0",
     "httpx>=0.28.1",
     "pre-commit>=4.5.0",
     "pytest>=9.0.2",
