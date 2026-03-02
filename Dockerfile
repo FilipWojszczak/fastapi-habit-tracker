@@ -4,15 +4,17 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 
 FROM base AS local
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-install-project
 CMD ["uv", "run", "fastapi", "dev", "fastapi_habit_tracker/main.py", "--host", "0.0.0.0", "--port", "8000"]
 
-FROM base as testing
-RUN uv sync --frozen
+FROM base AS testing
+RUN uv sync --frozen --no-install-project
 COPY . .
+RUN uv sync --frozen
 CMD ["uv", "run", "pytest"]
 
-FROM base as prod
-RUN uv sync --frozen --no-dev
+FROM base AS prod
+RUN uv sync --frozen --no-dev --no-install-project
 COPY . .
+RUN uv sync --frozen --no-dev
 CMD ["uv", "run", "fastapi", "run", "fastapi_habit_tracker/main.py", "--host", "0.0.0.0", "--port", "8000"]
