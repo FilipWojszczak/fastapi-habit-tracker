@@ -146,19 +146,17 @@ async def chat_with_info_agent(
             config = {"configurable": {"thread_id": thread_id}}
 
             current_state_snapshot = await info_agent.aget_state(config)
-            if not current_state_snapshot.next:
-                raise HTTPException(status_code=400, detail="Thread closed or expired.")
 
-            if hasattr(
-                current_state_snapshot.values.get("messages", [])[-1], "tool_calls"
-            ):
+            if not current_state_snapshot.values:
+                raise HTTPException(status_code=400, detail="Thread does not exist.")
+
+            if current_state_snapshot.next:
                 await info_agent.aupdate_state(config, {"user_decision_text": text})
+                agent_result = await info_agent.ainvoke(None, config=config)
             else:
-                await info_agent.aupdate_state(
-                    config, {"messages": [{"role": "user", "content": text}]}
+                agent_result = await info_agent.ainvoke(
+                    {"messages": [{"role": "user", "content": text}]}, config=config
                 )
-
-            agent_result = await info_agent.ainvoke(None, config=config)
 
         if agent_result.get("messages") and len(agent_result["messages"]) > 0:
             if (
