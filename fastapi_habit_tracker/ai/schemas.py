@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated, Literal, TypedDict
 
 from langchain.messages import AnyMessage
@@ -21,7 +21,7 @@ class HabitLogData(BaseModel):
     )
 
 
-class ExtractionStatus(str, Enum):
+class ExtractionStatus(StrEnum):
     MATCH = "match"
     AMBIGUOUS = "ambiguous"
     NO_MATCH = "no_match"

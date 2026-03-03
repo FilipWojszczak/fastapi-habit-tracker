@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      target: local
     ports:
       - "8000:8000"
     env_file:
@@ -15,7 +17,7 @@ services:
     volumes:
       - .:/app
       - /app/.venv
-    command: /bin/sh -c "uv run alembic upgrade head && uv run uvicorn fastapi_habit_tracker.main:app --host 0.0.0.0 --port 8000 --reload"
+    command: /bin/sh -c "uv run alembic upgrade head && uv run fastapi dev fastapi_habit_tracker/main.py --host 0.0.0.0 --port 8000 --reload"
 
   db:
     image: postgres:17
