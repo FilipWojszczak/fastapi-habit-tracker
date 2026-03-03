@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Column
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from .user import User
 
 
-class HabitPeriod(str, Enum):
+class HabitPeriod(StrEnum):
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
