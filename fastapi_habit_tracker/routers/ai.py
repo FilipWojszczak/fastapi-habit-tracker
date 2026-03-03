@@ -2,6 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, HTTPException
+from langchain.messages import RemoveMessage
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -134,29 +135,69 @@ async def chat_with_info_agent(
 
     async with pool.connection() as conn:
         info_agent = get_compiled_info_graph(conn)
+        is_new_thread = False
         if not thread_id:
             thread_id = f"info-{uuid.uuid4()}"
-            initial_state = {
-                "messages": [{"role": "user", "content": text}],
-                "user_id": user.id,
-            }
-            config = {"configurable": {"thread_id": thread_id}}
-            agent_result = await info_agent.ainvoke(initial_state, config=config)
-        else:
-            config = {"configurable": {"thread_id": thread_id}}
+            is_new_thread = True
 
-            current_state_snapshot = await info_agent.aget_state(config)
+        config = {"configurable": {"thread_id": thread_id}}
 
-            if not current_state_snapshot.values:
-                raise HTTPException(status_code=400, detail="Thread does not exist.")
-
-            if current_state_snapshot.next:
-                await info_agent.aupdate_state(config, {"user_decision_text": text})
-                agent_result = await info_agent.ainvoke(None, config=config)
+        try:
+            if is_new_thread:
+                initial_state = {
+                    "messages": [{"role": "user", "content": text}],
+                    "user_id": user.id,
+                }
+                agent_result = await info_agent.ainvoke(initial_state, config=config)
             else:
-                agent_result = await info_agent.ainvoke(
-                    {"messages": [{"role": "user", "content": text}]}, config=config
+                current_state_snapshot = await info_agent.aget_state(config)
+
+                if not current_state_snapshot.values:
+                    raise HTTPException(
+                        status_code=400, detail="Thread does not exist."
+                    )
+
+                if current_state_snapshot.next:
+                    await info_agent.aupdate_state(config, {"user_decision_text": text})
+                    agent_result = await info_agent.ainvoke(None, config=config)
+                else:
+                    agent_result = await info_agent.ainvoke(
+                        {"messages": [{"role": "user", "content": text}]}, config=config
+                    )
+        except HTTPException:
+            raise
+        except Exception as e:
+            error_str = str(e)
+
+            try:
+                current_state = await info_agent.aget_state(config)
+                messages = current_state.values.get("messages", [])
+
+                if (
+                    messages
+                    and getattr(messages[-1], "type", "") == "human"
+                    and messages[-1].content == text
+                ):
+                    msg_id = getattr(messages[-1], "id", None)
+                    if msg_id:
+                        await info_agent.aupdate_state(
+                            config, {"messages": [RemoveMessage(id=msg_id)]}
+                        )
+            except Exception as cleanup_e:
+                print(f"Warning: Failed to remove message from state: {cleanup_e}")
+            if (
+                "503" in error_str
+                or "UNAVAILABLE" in error_str
+                or "high demand" in error_str
+            ):
+                return InfoAgentResponse(
+                    message="I'm sorry, but the AI model is currently overloaded and "
+                    "experiencing high demand. Please try again in a moment.",
+                    thread_id=thread_id,
                 )
+            raise HTTPException(
+                status_code=500, detail=f"Internal AI error: {error_str}"
+            ) from e
 
         if agent_result.get("messages") and len(agent_result["messages"]) > 0:
             if (
