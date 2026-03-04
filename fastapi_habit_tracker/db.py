@@ -32,6 +32,7 @@ async def init_langgraph_pool() -> AsyncConnectionPool:
         conninfo=db_url,
         max_size=20,
         kwargs={"autocommit": True},
+        open=False,
     )
     await _langgraph_pool.open()
     return _langgraph_pool
