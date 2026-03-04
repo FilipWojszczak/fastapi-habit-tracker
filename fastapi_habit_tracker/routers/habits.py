@@ -190,10 +190,10 @@ async def list_logs_for_habit(
 
     statement = select(HabitLog).where(HabitLog.habit_id == habit_id)
     if since is not None:
-        since = datetime.combine(since, time.min)
+        since = datetime.combine(since, time.min, UTC)
         statement = statement.where(HabitLog.performed_at >= since)
     if to is not None:
-        to = datetime.combine(to, time.max)
+        to = datetime.combine(to, time.max, UTC)
         statement = statement.where(HabitLog.performed_at <= to)
     statement = statement.order_by(HabitLog.performed_at.desc()).limit(limit)
 
@@ -228,10 +228,10 @@ async def get_stats_for_habit(
 
     statement = select(HabitLog).where(HabitLog.habit_id == habit_id)
     if since is not None:
-        since_dt = datetime.combine(since, time.min)
+        since_dt = datetime.combine(since, time.min, UTC)
         statement = statement.where(HabitLog.performed_at >= since_dt)
     if to is not None:
-        to_dt = datetime.combine(to, time.max)
+        to_dt = datetime.combine(to, time.max, UTC)
         statement = statement.where(HabitLog.performed_at <= to_dt)
     statement = statement.order_by(HabitLog.performed_at.desc())
     result = await session.exec(statement)
