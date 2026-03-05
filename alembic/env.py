@@ -30,6 +30,19 @@ target_metadata = SQLModel.metadata
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url)
 
+IGNORE_TABLES = {
+    "checkpoints",
+    "checkpoint_writes",
+    "checkpoint_migrations",
+    "checkpoint_blobs",
+}
+
+
+def include_name(name, type_, parent_names):
+    if type_ == "table":
+        return name not in IGNORE_TABLES
+    return True
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -49,6 +62,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_name=include_name,
     )
 
     with context.begin_transaction():
@@ -74,6 +88,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             render_as_batch=connection.dialect.name == "sqlite",
+            include_name=include_name,
         )
 
         with context.begin_transaction():
