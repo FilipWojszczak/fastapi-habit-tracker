@@ -128,7 +128,6 @@ async def update_habit(
     habit = await session.get(Habit, habit_id)
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
-    habit.updated_at = datetime.now(UTC)
     habit_data_dict = habit_data.model_dump(exclude_unset=True)
     habit.sqlmodel_update(habit_data_dict)
     session.add(habit)

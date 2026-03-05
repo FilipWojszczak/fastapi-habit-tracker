@@ -32,7 +32,10 @@ class Habit(SQLModel, table=True):
     )
 
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(UTC)},
+    )
 
     user: User = Relationship(back_populates="habits")
     logs: list[HabitLog] = Relationship(
