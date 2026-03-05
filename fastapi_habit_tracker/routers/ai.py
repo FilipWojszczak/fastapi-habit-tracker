@@ -1,8 +1,10 @@
 import uuid
 from typing import Annotated
 
+import psycopg
 from fastapi import APIRouter, Body, Depends, HTTPException
 from langchain.messages import RemoveMessage
+from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -170,6 +172,16 @@ async def chat_with_info_agent(
                     agent_result = await info_agent.ainvoke(
                         {"messages": [{"role": "user", "content": text}]}, config=config
                     )
+        except (
+            psycopg.OperationalError,
+            psycopg.errors.ConnectionFailure,
+            SQLAlchemyOperationalError,
+        ) as db_err:
+            raise HTTPException(
+                status_code=503,
+                detail="The database service is temporarily unavailable. Please try "
+                "again later.",
+            ) from db_err
         except HTTPException:
             raise
         except Exception as e:
