@@ -35,4 +35,10 @@ class Habit(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     user: User = Relationship(back_populates="habits")
-    logs: list[HabitLog] = Relationship(back_populates="habit")
+    logs: list[HabitLog] = Relationship(
+        back_populates="habit",
+        sa_relationship_kwargs={
+            "cascade": "all, delete-orphan",
+            "passive_deletes": True,
+        },
+    )

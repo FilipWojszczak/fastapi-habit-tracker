@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
 class HabitLog(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    habit_id: int = Field(foreign_key="habit.id")
+    habit_id: int = Field(foreign_key="habit.id", ondelete="CASCADE")
 
     performed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     note: str | None = None
