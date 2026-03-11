@@ -5,7 +5,7 @@
 ![Python Version](https://img.shields.io/badge/python-3.14-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=flat&logo=fastapi)
 
-A comprehensive REST API for tracking habits, built with modern Python tools. This application allows users to create habits, log their progress, and view statistics such as current and longest streaks.
+A comprehensive REST API for tracking habits, built with modern Python tools. This application allows users to create habits, log their progress, view statistics, and interact with intelligent AI agents for seamless habit management.
 
 ## Features
 
@@ -15,6 +15,9 @@ A comprehensive REST API for tracking habits, built with modern Python tools. Th
 * **Statistics**:
     * Calculate current and longest streaks.
     * Track total logs and unique days of activity.
+* **AI Assistants**: Chat-based interface powered by LLMs for advanced habit management.
+* **Smart Logging**: AI agent that analyzes natural language text to match and automatically log habit progress.
+* **Interactive Data Retrieval**: Info agent capable of proposing SQL queries to return user statistics directly via chat.
 * **Modern Stack**: Built with FastAPI, SQLModel (SQLAlchemy) and Pydantic.
 * **Containerized**: Easy setup with Docker and Docker Compose.
 
@@ -25,6 +28,9 @@ A comprehensive REST API for tracking habits, built with modern Python tools. Th
 * **Database**: PostgreSQL 17
 * **ORM**: SQLModel / SQLAlchemy
 * **Migrations**: Alembic
+* **AI & LLM Integration**: LangChain, LangGraph
+* **Model Providers**: Google GenAI, Ollama
+* **AI Persistence**: LangGraph Checkpoint Postgres
 * **Dependency Management**: [uv](https://docs.astral.sh/uv/)
 * **Testing**: Pytest
 
@@ -37,10 +43,11 @@ A comprehensive REST API for tracking habits, built with modern Python tools. Th
 ├── pyproject.toml          # Dependencies and project metadata
 ├── alembic/                # Database migrations
 ├── fastapi_habit_tracker/  # Source code
+│   ├── ai/                 # AI agents logic (Logging Agent, Info Agent)
 │   ├── main.py             # App entry point
 │   ├── dependencies/       # Reusable dependencies (e.g. Auth)
 │   ├── models/             # Database models
-│   ├── routers/            # API endpoints (Auth, Habits, Logs)
+│   ├── routers/            # API endpoints (Auth, Habits, Logs, AI)
 │   ├── schemas/            # Pydantic schemas (Request/Response)
 │   └── utils/              # Helper functions (Stats, Security)
 └── tests/                  # Test suite
