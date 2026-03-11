@@ -75,7 +75,11 @@ The easiest way to run the application is using Docker Compose.
     ```bash
     cp .env.example .env
     ```
-    *Note: Ensure correct values for variables in `.env`.*
+    *Note: Ensure you configure the following essential variables in your `.env` file:*
+    * **Security**: Generate a strong, unique `SECRET_KEY` for JWT authentication.
+    * **Database**: Set your PostgreSQL credentials.
+    * **AI Providers**: Provide API keys or URLs for LLMs (`GOOGLE_API_KEY` and `OLLAMA_BASE_URL`).
+    * **LangSmith (Optional)**: Set tracking variables for AI agents debugging.
 
 3.  **Build and Run:**
     ```bash
