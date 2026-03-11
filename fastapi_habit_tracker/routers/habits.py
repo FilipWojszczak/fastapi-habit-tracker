@@ -1,8 +1,9 @@
+from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import selectinload
+from sqlalchemy import Date, cast, func
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -61,24 +62,40 @@ async def list_habits(
     include_stats: bool = False,
 ):
     statement = select(Habit).where(Habit.user_id == user.id)
-
-    if include_stats:
-        statement = statement.options(selectinload(Habit.logs))
-
     result = await session.exec(statement)
     habits = result.all()
 
-    if not include_stats:
+    if not include_stats or not habits:
         return habits
+
+    counts_stmt = (
+        select(HabitLog.habit_id, func.count(HabitLog.id))
+        .join(Habit)
+        .where(Habit.user_id == user.id)
+        .group_by(HabitLog.habit_id)
+    )
+    counts_result = await session.exec(counts_stmt)
+    counts_by_habit = dict(counts_result.all())
+
+    dates_stmt = (
+        select(HabitLog.habit_id, cast(HabitLog.performed_at, Date))
+        .join(Habit)
+        .where(Habit.user_id == user.id)
+        .distinct()
+        .order_by(HabitLog.habit_id, cast(HabitLog.performed_at, Date).desc())
+    )
+    dates_result = await session.exec(dates_stmt)
+
+    dates_by_habit = defaultdict(list)
+    for h_id, log_date in dates_result.all():
+        dates_by_habit[h_id].append(log_date)
 
     to_return: list[HabitWithStatsRead] = []
     for habit in habits:
-        logs = sorted(habit.logs, key=lambda log: log.performed_at, reverse=True)
-
         habit_out = HabitWithStatsRead.model_validate(habit)
         habit_out.stats = HabitStats(
-            total_logs=len(logs),
-            current_streak_days=current_streak_days(logs),
+            total_logs=counts_by_habit.get(habit.id, 0),
+            current_streak_days=current_streak_days(dates_by_habit.get(habit.id, [])),
         )
 
         to_return.append(habit_out)
@@ -225,30 +242,44 @@ async def get_stats_for_habit(
     if not habit or habit.user_id != user.id:
         raise HTTPException(status_code=404, detail="Habit not found")
 
-    statement = select(HabitLog).where(HabitLog.habit_id == habit_id)
+    stats_stmt = select(
+        func.count(HabitLog.id).label("total_logs"),
+        func.max(HabitLog.performed_at).label("last_performed_at"),
+        func.count(func.distinct(cast(HabitLog.performed_at, Date))).label(
+            "unique_days"
+        ),
+    ).where(HabitLog.habit_id == habit_id)
+
     if since is not None:
         since_dt = datetime.combine(since, time.min, UTC)
-        statement = statement.where(HabitLog.performed_at >= since_dt)
+        stats_stmt = stats_stmt.where(HabitLog.performed_at >= since_dt)
     if to is not None:
         to_dt = datetime.combine(to, time.max, UTC)
-        statement = statement.where(HabitLog.performed_at <= to_dt)
-    statement = statement.order_by(HabitLog.performed_at.desc())
-    result = await session.exec(statement)
-    logs = result.all()
+        stats_stmt = stats_stmt.where(HabitLog.performed_at <= to_dt)
 
-    if not logs:
-        to_return = {
-            "total_logs": 0,
-            "last_performed_at": None,
-            "unique_days": 0,
-            "longest_streak_days": 0,
-        }
-    else:
-        to_return = {}
-        to_return["total_logs"] = len(logs)
-        to_return["last_performed_at"] = logs[0].performed_at
-        to_return["unique_days"] = len(set(log.performed_at.date() for log in logs))
-        to_return["longest_streak_days"] = longest_streak_days(logs)
+    stats_result = await session.exec(stats_stmt)
+    total_logs, last_performed_at, unique_days = stats_result.one()
+
+    dates_stmt = select(cast(HabitLog.performed_at, Date)).where(
+        HabitLog.habit_id == habit_id
+    )
+    if since is not None:
+        dates_stmt = dates_stmt.where(HabitLog.performed_at >= since_dt)
+    if to is not None:
+        dates_stmt = dates_stmt.where(HabitLog.performed_at <= to_dt)
+
+    dates_stmt = dates_stmt.distinct().order_by(
+        cast(HabitLog.performed_at, Date).desc()
+    )
+    dates_result = await session.exec(dates_stmt)
+    unique_dates_desc = dates_result.all()
+
+    to_return = {
+        "total_logs": total_logs,
+        "last_performed_at": last_performed_at,
+        "unique_days": unique_days,
+        "longest_streak_days": longest_streak_days(unique_dates_desc),
+    }
 
     today = datetime.now(UTC).date()
     yesterday = today - timedelta(days=1)
@@ -261,9 +292,6 @@ async def get_stats_for_habit(
             "The provided date range does not include today or yesterday."
         )
     else:
-        if not logs:
-            to_return["current_streak_days"] = 0
-        else:
-            to_return["current_streak_days"] = current_streak_days(logs)
+        to_return["current_streak_days"] = current_streak_days(unique_dates_desc)
 
     return to_return

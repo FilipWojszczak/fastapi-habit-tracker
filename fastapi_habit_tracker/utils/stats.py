@@ -1,26 +1,11 @@
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from itertools import pairwise
 
-from ..models import HabitLog
 
-
-def _unique_dates_desc(logs: Sequence[HabitLog]) -> Sequence[HabitLog]:
-    # Extract unique dates in descending order
-    dates = []
-    for log in logs:
-        d = log.performed_at.date()
-        if not dates or dates[-1] != d:
-            dates.append(d)
-    # dates[0] = newest day, dates[-1] = oldest day
-    return dates
-
-
-def current_streak_days(descending_logs: Sequence[HabitLog]) -> int:
-    if not descending_logs:
+def current_streak_days(unique_dates_desc: Sequence[date]) -> int:
+    if not unique_dates_desc:
         return 0
-
-    unique_dates_desc = _unique_dates_desc(descending_logs)
 
     today = datetime.now(UTC).date()
 
@@ -41,11 +26,9 @@ def current_streak_days(descending_logs: Sequence[HabitLog]) -> int:
     return streak
 
 
-def longest_streak_days(descending_logs: Sequence[HabitLog]) -> int:
-    if not descending_logs:
+def longest_streak_days(unique_dates_desc: Sequence[date]) -> int:
+    if not unique_dates_desc:
         return 0
-
-    unique_dates_desc = _unique_dates_desc(descending_logs)
 
     longest = 1
     current = 1
