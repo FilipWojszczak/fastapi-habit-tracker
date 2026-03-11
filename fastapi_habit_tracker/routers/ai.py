@@ -1,8 +1,10 @@
 import uuid
 from typing import Annotated
 
+import psycopg
 from fastapi import APIRouter, Body, Depends, HTTPException
 from langchain.messages import RemoveMessage
+from sqlalchemy.exc import OperationalError as SQLAlchemyOperationalError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -50,7 +52,7 @@ async def chat_with_logging_agent(
         habit_graph = get_compiled_graph(conn)
 
         if not thread_id:
-            thread_id = f"log-{uuid.uuid4()}"
+            thread_id = f"user-{user.id}-log-{uuid.uuid4()}"
             initial_state = {
                 "user_input": text,
                 "chat_history": [],
@@ -60,6 +62,9 @@ async def chat_with_logging_agent(
             config = {"configurable": {"thread_id": thread_id}}
             agent_result = await habit_graph.ainvoke(initial_state, config=config)
         else:
+            if not thread_id.startswith(f"user-{user.id}-log-"):
+                raise HTTPException(status_code=400, detail="Invalid thread_id.")
+
             config = {"configurable": {"thread_id": thread_id}}
 
             current_state_snapshot = await habit_graph.aget_state(config)
@@ -137,7 +142,7 @@ async def chat_with_info_agent(
         info_agent = get_compiled_info_graph(conn)
         is_new_thread = False
         if not thread_id:
-            thread_id = f"info-{uuid.uuid4()}"
+            thread_id = f"user-{user.id}-info-{uuid.uuid4()}"
             is_new_thread = True
 
         config = {"configurable": {"thread_id": thread_id}}
@@ -150,6 +155,9 @@ async def chat_with_info_agent(
                 }
                 agent_result = await info_agent.ainvoke(initial_state, config=config)
             else:
+                if not thread_id.startswith(f"user-{user.id}-info-"):
+                    raise HTTPException(status_code=400, detail="Invalid thread_id.")
+
                 current_state_snapshot = await info_agent.aget_state(config)
 
                 if not current_state_snapshot.values:
@@ -164,6 +172,16 @@ async def chat_with_info_agent(
                     agent_result = await info_agent.ainvoke(
                         {"messages": [{"role": "user", "content": text}]}, config=config
                     )
+        except (
+            psycopg.OperationalError,
+            psycopg.errors.ConnectionFailure,
+            SQLAlchemyOperationalError,
+        ) as db_err:
+            raise HTTPException(
+                status_code=503,
+                detail="The database service is temporarily unavailable. Please try "
+                "again later.",
+            ) from db_err
         except HTTPException:
             raise
         except Exception as e:
